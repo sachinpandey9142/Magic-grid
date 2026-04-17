@@ -3,6 +3,8 @@ package com.magicgrid.game
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -109,6 +111,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         // Set up buttons
         resetButton.setOnClickListener {
             if (isPaused) return@setOnClickListener
+            provideControlFeedback(resetButton)
             gameManager.resetGame()
             hintsUsed = 0
             updateUI()
@@ -116,6 +119,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
 
         undoButton.setOnClickListener {
             if (isPaused) return@setOnClickListener
+            provideControlFeedback(undoButton)
             if (gameManager.undo()) {
                 updateUI()
             }
@@ -123,14 +127,26 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
 
         hintButton.setOnClickListener {
             if (isPaused) return@setOnClickListener
+            provideControlFeedback(hintButton)
             hintsUsed++
             progressManager.incrementHintsUsed(levelId)
             showHint()
         }
 
-        backButton.setOnClickListener { navigateToMenu() }
-        topBackButton.setOnClickListener { navigateToMenu() }
-        pauseButton.setOnClickListener { togglePause() }
+        backButton.setOnClickListener {
+            provideControlFeedback(backButton)
+            navigateToMenu()
+        }
+
+        topBackButton.setOnClickListener {
+            provideControlFeedback(topBackButton)
+            navigateToMenu()
+        }
+
+        pauseButton.setOnClickListener {
+            provideControlFeedback(pauseButton)
+            togglePause()
+        }
 
         progressManager.setCurrentLevel(levelId)
         applyPauseUiState()
@@ -345,6 +361,10 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private fun navigateToMenu() {
         startActivity(Intent(this, MenuActivity::class.java))
         finish()
+    }
+
+    private fun provideControlFeedback(view: View) {
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
