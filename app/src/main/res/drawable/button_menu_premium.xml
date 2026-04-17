@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Main gradient background -->
+    <item android:bottom="0dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#00CC00"
+                android:endColor="#00FF00" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+    
+    <!-- Inner white highlight for depth -->
+    <item android:bottom="4dp" android:start="2dp" android:end="2dp" android:top="2dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="180"
+                android:startColor="#33FFFFFF"
+                android:endColor="#00000000" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+</layer-list>

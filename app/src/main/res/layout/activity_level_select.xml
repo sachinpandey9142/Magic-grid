@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- COSMIC BACKGROUND -->
+    <com.magicgrid.ui.CosmicBackgroundView
+        android:id="@+id/cosmic_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- LEVEL SELECT CONTENT -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+    <!-- TOP BAR (Glass Effect) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/background_glass"
+        android:elevation="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:gravity="center_vertical">
+
+            <!-- Back Button -->
+            <Button
+                android:id="@+id/btn_back"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="←"
+                android:textSize="24sp"
+                android:textColor="@color/primary"
+                android:background="@drawable/button_icon"
+                android:elevation="0dp"
+                android:padding="0dp" />
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/level_select_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Select Level"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:gravity="center" />
+
+            <!-- Spacer for balance -->
+            <Space
+                android:layout_width="48dp"
+                android:layout_height="48dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- LEVEL GRID -->
+    <GridLayout
+        android:id="@+id/level_grid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:columnCount="3"
+        android:padding="16dp"
+        android:rowCount="0"
+        android:useDefaultMargins="false" />
+
+    </LinearLayout>
+
+</FrameLayout>

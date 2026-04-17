@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== GRADIENT BASE COLORS (Dark Purple/Blue Theme) ===== -->
+    <color name="gradient_dark">#0F0620</color>
+    <color name="gradient_dark_purple">#1A0E2E</color>
+    <color name="gradient_purple">#2E1A47</color>
+    <color name="gradient_blue">#16213E</color>
+    <color name="gradient_deep_blue">#0F3460</color>
+
+    <!-- ===== PRIMARY COLORS (Neon/Glowing) ===== -->
+    <color name="primary">#7C3AED</color>
+    <color name="primary_dark">#5B21B6</color>
+    <color name="primary_light">#A78BFA</color>
+    <color name="secondary">#06B6D4</color>
+    <color name="secondary_dark">#0891B2</color>
+
+    <!-- ===== BASIC COLORS ===== -->
+    <color name="white">#FFFFFF</color>
+    <color name="white_90">#E6E6E6</color>
+    <color name="white_80">#CCCCCC</color>
+    <color name="black">#000000</color>
+    <color name="black_20">#333333</color>
+    <color name="gray">#808080</color>
+    <color name="gray_dark">#4A5568</color>
+    <color name="light_gray">#E0E0E0</color>
+
+    <!-- ===== NEON GLOW PATH COLORS ===== -->
+    <color name="path_red">#FF006E</color>
+    <color name="path_red_glow">#FF1493</color>
+    <color name="path_blue">#00D9FF</color>
+    <color name="path_blue_glow">#00FFFF</color>
+    <color name="path_green">#39FF14</color>
+    <color name="path_green_glow">#7FFF00</color>
+    <color name="path_orange">#FFA500</color>
+    <color name="path_orange_glow">#FFD700</color>
+    <color name="path_purple">#B700FF</color>
+    <color name="path_purple_glow">#DA70D6</color>
+    <color name="path_yellow">#FFFF00</color>
+    <color name="path_yellow_glow">#FFFF66</color>
+    <color name="path_pink">#FF10F0</color>
+    <color name="path_pink_glow">#FF69B4</color>
+    <color name="path_cyan">#00D9FF</color>
+    <color name="path_cyan_glow">#00FFFF</color>
+
+    <!-- ===== STATUS COLORS ===== -->
+    <color name="level_completed">#10B981</color>
+    <color name="level_completed_dim">#059669</color>
+    <color name="level_available">#3B82F6</color>
+    <color name="level_available_dim">#1E40AF</color>
+    <color name="level_locked">#6B7280</color>
+    <color name="level_locked_dim">#4B5563</color>
+
+    <!-- ===== GLASS EFFECT COLORS ===== -->
+    <color name="glass_light">#FFFFFF1A</color>
+    <color name="glass_medium">#141428CC</color>  <!-- Dark semi-transparent for header/footer: rgba(20,20,40,0.8) -->
+    <color name="glass_dark">#0000001A</color>
+    <color name="glass_tile">#1E1E3266</color>  <!-- Dark translucent for game tiles: rgba(30,30,50,0.4) -->
+
+    <!-- ===== BACKGROUND COLORS ===== -->
+    <color name="background">#0F0620</color>
+    <color name="background_dark">#0A0415</color>
+    <color name="surface">#1A0E2E</color>
+    <color name="surface_elevated">#2E1A47</color>
+
+    <!-- ===== UI COLORS ===== -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_tertiary">#808080</color>
+    <color name="border">#FFFFFF1A</color>
+    <color name="divider">#FFFFFF0D</color>
+
+    <!-- ===== ACCENT COLORS ===== -->
+    <color name="accent_warm">#FF6B6B</color>
+    <color name="accent_cool">#4ECDC4</color>
+    <color name="accent_gold">#FFD700</color>
+
+    <!-- ===== APP ICON ===== -->
+    <color name="ic_launcher_bg">#7C3AED</color>
+
+    <!-- ===== COSMIC/NEON THEME (Premium Galaxy Background) ===== -->
+    <color name="cosmic_deep_purple">#2A0A5E</color>
+    <color name="cosmic_violet">#4B1FA5</color>
+    <color name="cosmic_black_purple">#0F0620</color>
+    <color name="cosmic_blue_glow">#3A8DFF</color>
+    <color name="cosmic_pink_glow">#FF4DFF</color>
+    <color name="cosmic_particle_light">#FFFFFF33</color>
+    <color name="cosmic_particle_dark">#FFFFFF0D</color>
+    <color name="cosmic_overlay_blue">#2E5AA840</color>
+    <color name="cosmic_overlay_pink">#B8286640</color>
+</resources>

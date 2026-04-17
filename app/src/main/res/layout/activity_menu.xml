@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Premium cosmic background with animated particles -->
+    <com.magicgrid.ui.CosmicBackgroundView
+        android:id="@+id/cosmic_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Main content on top of background -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <!-- Top spacing -->
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Title section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="64dp">
+
+            <!-- App title with glow -->
+            <TextView
+                android:id="@+id/app_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Magic Grid"
+                style="@style/TitleLarge"
+                android:shadowColor="@color/primary"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="12"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Subtitle -->
+            <TextView
+                android:id="@+id/app_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Connect the colors\nto fill the grid"
+                android:textAlignment="center"
+                style="@style/Subtitle"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+
+        <!-- Buttons container -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="32dp">
+
+            <!-- PLAY Button - Primary with gradient -->
+            <Button
+                android:id="@+id/btn_play"
+                android:layout_width="280dp"
+                android:layout_height="60dp"
+                android:text="PLAY"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/button_primary_elevated"
+                android:elevation="12dp"
+                android:stateListAnimator="@animator/button_animator"
+                android:drawableLeft="@drawable/ic_play"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp" />
+
+            <!-- LEVELS Button -->
+            <Button
+                android:id="@+id/btn_levels"
+                android:layout_width="280dp"
+                android:layout_height="56dp"
+                android:text="LEVELS"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/button_outline"
+                android:elevation="4dp"
+                android:stateListAnimator="@animator/button_animator"
+                android:drawableLeft="@drawable/ic_grid"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp" />
+
+            <!-- SETTINGS Button -->
+            <Button
+                android:id="@+id/btn_settings"
+                android:layout_width="280dp"
+                android:layout_height="56dp"
+                android:text="SETTINGS"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/button_outline"
+                android:elevation="4dp"
+                android:stateListAnimator="@animator/button_animator"
+                android:drawableLeft="@drawable/ic_settings"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp" />
+
+            <!-- EXIT Button -->
+            <Button
+                android:id="@+id/btn_exit"
+                android:layout_width="280dp"
+                android:layout_height="56dp"
+                android:text="EXIT"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:background="@drawable/button_outline"
+                android:elevation="4dp"
+                android:stateListAnimator="@animator/button_animator"
+                android:drawableLeft="@drawable/ic_exit"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp" />
+
+        </LinearLayout>
+
+        <!-- Bottom spacing -->
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+</FrameLayout>
+
