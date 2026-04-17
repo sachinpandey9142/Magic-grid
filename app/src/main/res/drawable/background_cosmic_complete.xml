@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base cosmic gradient -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="90"
+                android:startColor="#2A0A5E"
+                android:centerColor="#4B1FA5"
+                android:endColor="#0F0620" />
+        </shape>
+    </item>
+
+    <!-- Subtle radial glow overlay for depth -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#3A8DFF22" />
+        </shape>
+    </item>
+
+    <!-- Pink glow in corner -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF4DFF15" />
+        </shape>
+    </item>
+</layer-list>

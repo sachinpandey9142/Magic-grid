@@ -1,0 +1,5 @@
+# This file is intentionally left blank.
+# Copy this as local.properties and adjust SDK paths if needed.
+# sdk.dir=C:\\Android\\sdk  (Windows)
+# sdk.dir=/Users/username/Library/Android/sdk  (macOS)
+# sdk.dir=/home/username/Android/Sdk  (Linux)

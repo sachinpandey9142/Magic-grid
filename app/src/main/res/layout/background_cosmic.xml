@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 
+    Reusable cosmic background container.
+    Include this in your layout files to add the premium cosmic background.
+    
+    Usage in any layout:
+    <include layout="@layout/background_cosmic" />
+    
+    Then place your content above it with proper elevation.
+    -->
+    
+    <com.magicgrid.ui.CosmicBackgroundView
+        android:id="@+id/cosmic_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:elevation="0dp" />
+</merge>
