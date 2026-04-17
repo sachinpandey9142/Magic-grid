@@ -7,6 +7,14 @@ import com.magicgrid.logic.LevelGenerator
  * Each level is guaranteed to be completable with proper puzzle solving.
  */
 object LevelRepository {
+    const val EASY_LEVEL_COUNT = 50
+    const val MEDIUM_LEVEL_COUNT = 30
+    const val HARD_LEVEL_COUNT = 20
+
+    private const val EASY_GRID_SIZE = 5
+    private const val MEDIUM_GRID_SIZE = 6
+    private const val HARD_GRID_SIZE = 7
+
     private val levels = mutableListOf<Level>()
     private val generator = LevelGenerator(seed = 42)  // Fixed seed for consistent levels
 
@@ -20,79 +28,65 @@ object LevelRepository {
     private fun initializeLevels() {
         levels.clear()
 
-        // EASY LEVELS (5x5, 2-3 colors)
-        for (i in 0 until 3) {
-            val generated = generator.generateLevel(5, "easy") ?: continue
-            levels.add(
-                Level(
-                    id = levels.size + 1,
-                    name = "Easy Level ${levels.size + 1}",
-                    gridSize = 5,
-                    rows = 5,
-                    cols = 5,
-                    endpoints = generated.endpoints.map { ep ->
-                        Level.ColorEndpoint(
-                            color = ep.color,
-                            startRow = ep.startRow,
-                            startCol = ep.startCol,
-                            endRow = ep.endRow,
-                            endCol = ep.endCol
-                        )
-                    }
-                )
-            )
-        }
+        // EASY LEVELS (5x5, 2-3 colors) -> 50 levels
+        addGeneratedLevels(
+            count = EASY_LEVEL_COUNT,
+            gridSize = EASY_GRID_SIZE,
+            difficulty = "easy",
+            namePrefix = "Easy Level"
+        )
 
-        // MEDIUM LEVELS (6x6, 3-4 colors)
-        for (i in 0 until 4) {
-            val generated = generator.generateLevel(6, "medium") ?: continue
-            levels.add(
-                Level(
-                    id = levels.size + 1,
-                    name = "Medium Level ${i + 1}",
-                    gridSize = 6,
-                    rows = 6,
-                    cols = 6,
-                    endpoints = generated.endpoints.map { ep ->
-                        Level.ColorEndpoint(
-                            color = ep.color,
-                            startRow = ep.startRow,
-                            startCol = ep.startCol,
-                            endRow = ep.endRow,
-                            endCol = ep.endCol
-                        )
-                    }
-                )
-            )
-        }
+        // MEDIUM LEVELS (6x6, 3-4 colors) -> 30 levels
+        addGeneratedLevels(
+            count = MEDIUM_LEVEL_COUNT,
+            gridSize = MEDIUM_GRID_SIZE,
+            difficulty = "medium",
+            namePrefix = "Medium Level"
+        )
 
-        // HARD LEVELS (7x7, 4-5 colors)
-        for (i in 0 until 3) {
-            val generated = generator.generateLevel(7, "hard") ?: continue
-            levels.add(
-                Level(
-                    id = levels.size + 1,
-                    name = "Hard Level ${i + 1}",
-                    gridSize = 7,
-                    rows = 7,
-                    cols = 7,
-                    endpoints = generated.endpoints.map { ep ->
-                        Level.ColorEndpoint(
-                            color = ep.color,
-                            startRow = ep.startRow,
-                            startCol = ep.startCol,
-                            endRow = ep.endRow,
-                            endCol = ep.endCol
-                        )
-                    }
-                )
-            )
-        }
+        // HARD LEVELS (7x7, 4-5 colors) -> 20 levels
+        addGeneratedLevels(
+            count = HARD_LEVEL_COUNT,
+            gridSize = HARD_GRID_SIZE,
+            difficulty = "hard",
+            namePrefix = "Hard Level"
+        )
 
         // Fallback: Ensure we have at least some levels
         // These are handcrafted proven-solvable levels as backup
         if (levels.isEmpty()) {
             addFallbackLevels()
+        }
+    }
+
+    private fun addGeneratedLevels(
+        count: Int,
+        gridSize: Int,
+        difficulty: String,
+        namePrefix: String
+    ) {
+        var packIndex = 1
+        while (packIndex <= count) {
+            val generated = generator.generateLevel(gridSize, difficulty) ?: continue
+            levels.add(
+                Level(
+                    id = levels.size + 1,
+                    name = "$namePrefix $packIndex",
+                    gridSize = gridSize,
+                    rows = gridSize,
+                    cols = gridSize,
+                    endpoints = generated.endpoints.map { ep ->
+                        Level.ColorEndpoint(
+                            color = ep.color,
+                            startRow = ep.startRow,
+                            startCol = ep.startCol,
+                            endRow = ep.endRow,
+                            endCol = ep.endCol
+                        )
+                    }
+                )
+            )
+            packIndex++
         }
     }
 
@@ -173,6 +167,20 @@ object LevelRepository {
      * Get level count by difficulty
      */
     fun getLevelsByDifficulty(difficulty: String): List<Level> {
-        return levels.filter { it.getDifficulty() == difficulty }
+        val range = getDifficultyRange(difficulty)
+        return if (range != null) {
+            levels.filter { it.id in range }
+        } else {
+            levels.filter { it.getDifficulty().equals(difficulty, ignoreCase = true) }
+        }
+    }
+
+    fun getDifficultyRange(difficulty: String): IntRange? {
+        return when (difficulty.lowercase()) {
+            "easy" -> 1..EASY_LEVEL_COUNT
+            "medium" -> (EASY_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT)
+            "hard" -> (EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + HARD_LEVEL_COUNT)
+            else -> null
+        }
     }
 }

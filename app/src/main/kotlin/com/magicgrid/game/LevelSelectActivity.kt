@@ -2,30 +2,37 @@ package com.magicgrid.game
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.Space
 import android.widget.TextView
 import com.magicgrid.R
-import com.magicgrid.data.Level
 import com.magicgrid.data.LevelRepository
 import com.magicgrid.data.ProgressManager
-import kotlin.math.roundToInt
 
 /**
  * Level selection screen - shows all available levels
  */
 class LevelSelectActivity : AppCompatActivity() {
+    private data class DifficultyPack(
+        val key: String,
+        val title: String,
+        val subtitle: String,
+        val gridLabel: String,
+        val levelCount: Int,
+        val levelRange: IntRange
+    )
+
     private lateinit var progressManager: ProgressManager
     private lateinit var titleTextView: TextView
     private lateinit var subtitleTextView: TextView
-    private lateinit var levelMapContainer: LinearLayout
+    private lateinit var easyCard: AppCompatButton
+    private lateinit var mediumCard: AppCompatButton
+    private lateinit var hardCard: AppCompatButton
+    private lateinit var packs: List<DifficultyPack>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,10 +41,15 @@ class LevelSelectActivity : AppCompatActivity() {
         progressManager = ProgressManager(this)
         titleTextView = findViewById(R.id.level_select_title)
         subtitleTextView = findViewById(R.id.level_select_subtitle)
-        levelMapContainer = findViewById(R.id.level_map_container)
+        easyCard = findViewById(R.id.card_easy)
+        mediumCard = findViewById(R.id.card_medium)
+        hardCard = findViewById(R.id.card_hard)
 
-        // Populate level map
-        populateLevels()
+        packs = buildDifficultyPacks()
+
+        bindDifficultyCards()
+        animateCardsOnEntry()
+        refreshHeader()
 
         // Back button
         val backButton = findViewById<Button>(R.id.btn_back)
@@ -46,195 +58,124 @@ class LevelSelectActivity : AppCompatActivity() {
         }
     }
 
-    private fun populateLevels() {
-        val levels = LevelRepository.getAllLevels()
-        val completedLevels = progressManager.getCompletedLevels()
-        val highestUnlocked = progressManager.getHighestUnlockedLevel()
+    override fun onResume() {
+        super.onResume()
+        refreshHeader()
+        bindDifficultyCards()
+    }
+
+    private fun buildDifficultyPacks(): List<DifficultyPack> {
+        val easyRange = 1..LevelRepository.EASY_LEVEL_COUNT
+        val mediumRangeStart = easyRange.last + 1
+        val mediumRange = mediumRangeStart..(mediumRangeStart + LevelRepository.MEDIUM_LEVEL_COUNT - 1)
+        val hardRangeStart = mediumRange.last + 1
+        val hardRange = hardRangeStart..(hardRangeStart + LevelRepository.HARD_LEVEL_COUNT - 1)
+
+        return listOf(
+            DifficultyPack(
+                key = DifficultyLevelsActivity.DIFFICULTY_EASY,
+                title = getString(R.string.difficulty_easy_title),
+                subtitle = getString(R.string.difficulty_easy_subtitle),
+                gridLabel = "5x5",
+                levelCount = LevelRepository.EASY_LEVEL_COUNT,
+                levelRange = easyRange
+            ),
+            DifficultyPack(
+                key = DifficultyLevelsActivity.DIFFICULTY_MEDIUM,
+                title = getString(R.string.difficulty_medium_title),
+                subtitle = getString(R.string.difficulty_medium_subtitle),
+                gridLabel = "6x6",
+                levelCount = LevelRepository.MEDIUM_LEVEL_COUNT,
+                levelRange = mediumRange
+            ),
+            DifficultyPack(
+                key = DifficultyLevelsActivity.DIFFICULTY_HARD,
+                title = getString(R.string.difficulty_hard_title),
+                subtitle = getString(R.string.difficulty_hard_subtitle),
+                gridLabel = "7x7",
+                levelCount = LevelRepository.HARD_LEVEL_COUNT,
+                levelRange = hardRange
+            )
+        )
+    }
+
+    private fun refreshHeader() {
+        val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
+        val highestUnlocked = progressManager.getHighestUnlockedLevel().coerceIn(1, totalLevels)
+        val completedCount = progressManager.getCompletedLevels()
+            .mapNotNull { it.toIntOrNull() }
+            .count { it in 1..totalLevels }
         val totalStars = progressManager.getTotalStars()
 
-        titleTextView.text = getString(R.string.level_map_title_format, highestUnlocked, levels.size)
+        titleTextView.text = getString(R.string.level_map_title_format, highestUnlocked, totalLevels)
         subtitleTextView.text = getString(
             R.string.level_map_subtitle_format,
-            completedLevels.size,
-            levels.size,
+            completedCount,
+            totalLevels,
             totalStars
         )
-
-        levelMapContainer.removeAllViews()
-
-        if (levels.isEmpty()) {
-            subtitleTextView.text = getString(R.string.level_map_empty)
-            return
-        }
-
-        val rows = levels.chunked(3)
-        rows.forEachIndexed { rowIndex, chunk ->
-            addLevelRow(chunk, rowIndex, completedLevels)
-
-            if (rowIndex < rows.lastIndex) {
-                addConnector(rowIndex)
-            }
-        }
     }
 
-    private fun addLevelRow(
-        rowLevels: List<Level>,
-        rowIndex: Int,
-        completedLevels: Set<String>
-    ) {
-        val rowLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        val displayLevels = if (rowIndex % 2 == 0) rowLevels else rowLevels.reversed()
-
-        displayLevels.forEachIndexed { slotIndex, level ->
-            val visualIndex = rowIndex * 3 + slotIndex
-            rowLayout.addView(createLevelNode(level, completedLevels, visualIndex))
-        }
-
-        repeat((3 - displayLevels.size).coerceAtLeast(0)) {
-            rowLayout.addView(createLevelSpacer())
-        }
-
-        levelMapContainer.addView(rowLayout)
+    private fun bindDifficultyCards() {
+        bindDifficultyCard(easyCard, packs[0])
+        bindDifficultyCard(mediumCard, packs[1])
+        bindDifficultyCard(hardCard, packs[2])
     }
 
-    private fun addConnector(rowIndex: Int) {
-        val connector = View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(20)
-            ).apply {
-                marginStart = dp(22)
-                marginEnd = dp(22)
-            }
+    private fun bindDifficultyCard(card: AppCompatButton, pack: DifficultyPack) {
+        val completedInPack = countCompletedLevels(pack.levelRange)
+        val starsInPack = countStarsInRange(pack.levelRange)
+        val unlocked = isPackUnlocked(pack)
 
-            background = getDrawable(
-                if (rowIndex % 2 == 0) {
-                    R.drawable.level_map_connector_right
-                } else {
-                    R.drawable.level_map_connector_left
-                }
-            )
-            alpha = 0.85f
-        }
-
-        levelMapContainer.addView(connector)
-    }
-
-    private fun createLevelNode(
-        level: Level,
-        completedLevels: Set<String>,
-        visualIndex: Int
-    ): AppCompatButton {
-        val isUnlocked = progressManager.isLevelUnlocked(level.id)
-        val isCompleted = completedLevels.contains(level.id.toString())
-        val stars = progressManager.getLevelStars(level.id)
-
-        val nodeButton = AppCompatButton(this)
-        nodeButton.layoutParams = LinearLayout.LayoutParams(0, dp(108), 1f).apply {
-            marginStart = dp(6)
-            marginEnd = dp(6)
-            topMargin = dp(4)
-            bottomMargin = dp(4)
-        }
-
-        nodeButton.text = buildNodeText(level, isUnlocked, isCompleted, stars)
-        nodeButton.isAllCaps = false
-        nodeButton.textSize = 12.5f
-        nodeButton.gravity = Gravity.CENTER
-        nodeButton.setLineSpacing(0f, 1.08f)
-        nodeButton.setPadding(dp(6), dp(10), dp(6), dp(10))
-        nodeButton.elevation = dp(4).toFloat()
-
-        when {
-            isCompleted -> {
-                nodeButton.setBackgroundResource(R.drawable.level_node_completed)
-                nodeButton.isEnabled = true
-                nodeButton.alpha = 1f
-            }
-            isUnlocked -> {
-                nodeButton.setBackgroundResource(R.drawable.level_node_unlocked)
-                nodeButton.isEnabled = true
-                nodeButton.alpha = 1f
-            }
-            else -> {
-                nodeButton.setBackgroundResource(R.drawable.level_node_locked)
-                nodeButton.isEnabled = false
-                nodeButton.alpha = 0.8f
-            }
-        }
-
-        if (isUnlocked) {
-            nodeButton.setOnClickListener {
-                launchLevelWithFeedback(level.id, nodeButton)
-            }
+        val lockHint = if (unlocked) {
+            getString(R.string.difficulty_card_open_hint)
         } else {
-            nodeButton.setOnClickListener {
-                showToast(getString(R.string.level_locked_toast))
+            getString(R.string.difficulty_card_locked_hint, pack.levelRange.first)
+        }
+
+        card.text = getString(
+            R.string.difficulty_card_home_format,
+            pack.title,
+            pack.subtitle,
+            pack.gridLabel,
+            pack.levelCount,
+            completedInPack,
+            starsInPack,
+            lockHint
+        )
+
+        card.alpha = if (unlocked) 1f else 0.82f
+        card.setOnClickListener {
+            if (!unlocked) {
+                card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            } else {
+                card.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             }
-        }
 
-        nodeButton.alpha = 0f
-        nodeButton.translationY = dp(26).toFloat()
-        nodeButton.animate()
-            .alpha(if (isUnlocked) 1f else 0.85f)
-            .translationY(0f)
-            .setDuration(320)
-            .setStartDelay((visualIndex * 45L) + 90L)
-            .setInterpolator(OvershootInterpolator(0.9f))
-            .start()
-
-        return nodeButton
-    }
-
-    private fun createLevelSpacer(): Space {
-        return Space(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, dp(108), 1f).apply {
-                marginStart = dp(6)
-                marginEnd = dp(6)
-                topMargin = dp(4)
-                bottomMargin = dp(4)
-            }
+            openDifficultyPage(pack, card)
         }
     }
 
-    private fun buildNodeText(level: Level, isUnlocked: Boolean, isCompleted: Boolean, stars: Int): String {
-        val firstLine = getString(R.string.level_card_title_format, level.id)
-
-        val secondLine = when {
-            !isUnlocked -> getString(R.string.level_locked_label)
-            isCompleted -> getString(
-                R.string.level_completed_info_format,
-                stars.coerceAtLeast(1),
-                level.gridSize,
-                level.gridSize
-            )
-            else -> getString(
-                R.string.level_available_info_format,
-                level.getDifficulty(),
-                level.gridSize,
-                level.gridSize
-            )
+    private fun animateCardsOnEntry() {
+        val cards = listOf(easyCard, mediumCard, hardCard)
+        cards.forEachIndexed { index, card ->
+            card.alpha = 0f
+            card.translationY = 36f
+            card.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(320)
+                .setStartDelay(80L + (index * 70L))
+                .setInterpolator(OvershootInterpolator(0.92f))
+                .start()
         }
-
-        return "$firstLine\n$secondLine"
     }
 
-    private fun launchLevelWithFeedback(levelId: Int, sourceView: View) {
-        sourceView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        sourceView.isEnabled = false
-
+    private fun openDifficultyPage(pack: DifficultyPack, sourceView: View) {
         sourceView.animate().cancel()
         sourceView.animate()
-            .scaleX(0.94f)
-            .scaleY(0.94f)
+            .scaleX(0.97f)
+            .scaleY(0.97f)
             .setDuration(65)
             .withEndAction {
                 sourceView.animate()
@@ -242,25 +183,32 @@ class LevelSelectActivity : AppCompatActivity() {
                     .scaleY(1f)
                     .setDuration(120)
                     .withEndAction {
-                        progressManager.setCurrentLevel(levelId)
-                        startGameActivity(levelId)
+                        startActivity(
+                            Intent(this, DifficultyLevelsActivity::class.java).apply {
+                                putExtra(DifficultyLevelsActivity.EXTRA_DIFFICULTY_KEY, pack.key)
+                            }
+                        )
                     }
                     .start()
             }
             .start()
     }
 
-    private fun startGameActivity(levelId: Int) {
-        val intent = Intent(this, GameActivity::class.java)
-        intent.putExtra("level_id", levelId)
-        startActivity(intent)
+    private fun countCompletedLevels(range: IntRange): Int {
+        return progressManager.getCompletedLevels()
+            .mapNotNull { it.toIntOrNull() }
+            .count { it in range }
     }
 
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).roundToInt()
+    private fun countStarsInRange(range: IntRange): Int {
+        var total = 0
+        for (levelId in range) {
+            total += progressManager.getLevelStars(levelId)
+        }
+        return total
     }
 
-    private fun showToast(message: String) {
-        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+    private fun isPackUnlocked(pack: DifficultyPack): Boolean {
+        return progressManager.getHighestUnlockedLevel() >= pack.levelRange.first
     }
 }
