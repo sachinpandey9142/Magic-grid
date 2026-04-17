@@ -29,16 +29,19 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginBottom="64dp">
+            android:layout_marginBottom="32dp">
 
             <!-- App title with glow -->
             <TextView
                 android:id="@+id/app_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Magic Grid"
+                android:text="@string/app_name"
                 style="@style/TitleLarge"
-                android:shadowColor="@color/primary"
+                android:textColor="@color/white"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.12"
+                android:shadowColor="#AA7C3AED"
                 android:shadowDx="0"
                 android:shadowDy="0"
                 android:shadowRadius="12"
@@ -49,8 +52,12 @@
                 android:id="@+id/app_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Connect the colors\nto fill the grid"
+                android:text="@string/menu_subtitle"
                 android:textAlignment="center"
+                android:textSize="16sp"
+                android:textColor="@color/white_90"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
                 style="@style/Subtitle"
                 android:layout_marginTop="8dp" />
 
@@ -58,80 +65,113 @@
 
         <!-- Buttons container -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/menu_button_panel"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginBottom="32dp">
+            android:gravity="center_horizontal"
+            android:layout_marginBottom="20dp"
+            android:paddingLeft="16dp"
+            android:paddingTop="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="16dp"
+            android:background="@drawable/menu_button_panel">
 
-            <!-- PLAY Button - Primary with gradient -->
+            <!-- PLAY Button - Primary with richer depth -->
             <Button
                 android:id="@+id/btn_play"
                 android:layout_width="280dp"
-                android:layout_height="60dp"
-                android:text="PLAY"
-                android:textSize="18sp"
+                android:layout_height="64dp"
+                android:text="@string/play"
+                android:textAllCaps="false"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="@color/white"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/button_primary_elevated"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/button_menu_primary_modern"
                 android:elevation="12dp"
                 android:stateListAnimator="@animator/button_animator"
-                android:drawableLeft="@drawable/ic_play"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp" />
+                android:drawableStart="@drawable/ic_play"
+                android:drawablePadding="14dp"
+                android:gravity="center_vertical|start"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp" />
 
             <!-- LEVELS Button -->
             <Button
                 android:id="@+id/btn_levels"
                 android:layout_width="280dp"
                 android:layout_height="56dp"
-                android:text="LEVELS"
+                android:text="@string/levels"
+                android:textAllCaps="false"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/button_outline"
-                android:elevation="4dp"
+                android:textColor="@color/white"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/button_menu_secondary_modern"
+                android:elevation="5dp"
                 android:stateListAnimator="@animator/button_animator"
-                android:drawableLeft="@drawable/ic_grid"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp" />
+                android:drawableStart="@drawable/ic_grid"
+                android:drawablePadding="12dp"
+                android:gravity="center_vertical|start"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp" />
 
             <!-- SETTINGS Button -->
             <Button
                 android:id="@+id/btn_settings"
                 android:layout_width="280dp"
                 android:layout_height="56dp"
-                android:text="SETTINGS"
+                android:text="@string/settings"
+                android:textAllCaps="false"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_marginBottom="12dp"
-                android:background="@drawable/button_outline"
-                android:elevation="4dp"
+                android:textColor="@color/white"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/button_menu_secondary_modern"
+                android:elevation="5dp"
                 android:stateListAnimator="@animator/button_animator"
-                android:drawableLeft="@drawable/ic_settings"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp" />
+                android:drawableStart="@drawable/ic_settings"
+                android:drawablePadding="12dp"
+                android:gravity="center_vertical|start"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp" />
 
             <!-- EXIT Button -->
             <Button
                 android:id="@+id/btn_exit"
                 android:layout_width="280dp"
                 android:layout_height="56dp"
-                android:text="EXIT"
+                android:text="@string/exit"
+                android:textAllCaps="false"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:background="@drawable/button_outline"
-                android:elevation="4dp"
+                android:textColor="@color/white"
+                android:fontFamily="sans-serif-medium"
+                android:background="@drawable/button_menu_secondary_modern"
+                android:elevation="5dp"
                 android:stateListAnimator="@animator/button_animator"
-                android:drawableLeft="@drawable/ic_exit"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp" />
+                android:drawableStart="@drawable/ic_exit"
+                android:drawablePadding="12dp"
+                android:gravity="center_vertical|start"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp" />
 
         </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/menu_hint"
+            android:textSize="13sp"
+            android:textColor="@color/white_80"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.03"
+            android:layout_marginBottom="8dp" />
 
         <!-- Bottom spacing -->
         <Space
