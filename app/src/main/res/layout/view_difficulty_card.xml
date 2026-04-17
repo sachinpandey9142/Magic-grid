@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="168dp"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:foreground="?attr/selectableItemBackground"
+    android:stateListAnimator="@animator/button_animator">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/card_icon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription=""
+            android:src="@drawable/ic_play"
+            android:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/card_state"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/difficulty_state_chip_locked"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="Locked"
+            android:textColor="@color/white"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/card_action"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open"
+            android:textColor="@color/white_90"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/card_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Easy Beginner"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/card_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Starter journey"
+        android:textColor="@color/white_90"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/card_chip_levels"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/difficulty_stat_chip"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="50 levels"
+            android:textColor="@color/white"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+
+        <TextView
+            android:id="@+id/card_chip_progress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/difficulty_stat_chip"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="0 done"
+            android:textColor="@color/white"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+
+        <TextView
+            android:id="@+id/card_chip_stars"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/difficulty_stat_chip"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="0 stars"
+            android:textColor="@color/white"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>

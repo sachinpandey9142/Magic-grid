@@ -3,11 +3,12 @@ package com.magicgrid.game
 import android.content.Intent
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatButton
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import com.magicgrid.R
 import com.magicgrid.data.LevelRepository
@@ -23,15 +24,28 @@ class LevelSelectActivity : AppCompatActivity() {
         val subtitle: String,
         val gridLabel: String,
         val levelCount: Int,
-        val levelRange: IntRange
+        val levelRange: IntRange,
+        val iconRes: Int
+    )
+
+    private data class DifficultyCardViews(
+        val root: View,
+        val icon: ImageView,
+        val state: TextView,
+        val title: TextView,
+        val subtitle: TextView,
+        val levelsChip: TextView,
+        val progressChip: TextView,
+        val starsChip: TextView,
+        val action: TextView
     )
 
     private lateinit var progressManager: ProgressManager
     private lateinit var titleTextView: TextView
     private lateinit var subtitleTextView: TextView
-    private lateinit var easyCard: AppCompatButton
-    private lateinit var mediumCard: AppCompatButton
-    private lateinit var hardCard: AppCompatButton
+    private lateinit var easyCard: DifficultyCardViews
+    private lateinit var mediumCard: DifficultyCardViews
+    private lateinit var hardCard: DifficultyCardViews
     private lateinit var packs: List<DifficultyPack>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,11 +55,15 @@ class LevelSelectActivity : AppCompatActivity() {
         progressManager = ProgressManager(this)
         titleTextView = findViewById(R.id.level_select_title)
         subtitleTextView = findViewById(R.id.level_select_subtitle)
-        easyCard = findViewById(R.id.card_easy)
-        mediumCard = findViewById(R.id.card_medium)
-        hardCard = findViewById(R.id.card_hard)
+        easyCard = createCardViews(R.id.card_easy)
+        mediumCard = createCardViews(R.id.card_medium)
+        hardCard = createCardViews(R.id.card_hard)
 
         packs = buildDifficultyPacks()
+
+        attachPressAnimation(easyCard.root)
+        attachPressAnimation(mediumCard.root)
+        attachPressAnimation(hardCard.root)
 
         bindDifficultyCards()
         animateCardsOnEntry()
@@ -78,7 +96,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 subtitle = getString(R.string.difficulty_easy_subtitle),
                 gridLabel = "5x5",
                 levelCount = LevelRepository.EASY_LEVEL_COUNT,
-                levelRange = easyRange
+                levelRange = easyRange,
+                iconRes = R.drawable.ic_play
             ),
             DifficultyPack(
                 key = DifficultyLevelsActivity.DIFFICULTY_MEDIUM,
@@ -86,7 +105,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 subtitle = getString(R.string.difficulty_medium_subtitle),
                 gridLabel = "6x6",
                 levelCount = LevelRepository.MEDIUM_LEVEL_COUNT,
-                levelRange = mediumRange
+                levelRange = mediumRange,
+                iconRes = R.drawable.ic_grid
             ),
             DifficultyPack(
                 key = DifficultyLevelsActivity.DIFFICULTY_HARD,
@@ -94,7 +114,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 subtitle = getString(R.string.difficulty_hard_subtitle),
                 gridLabel = "7x7",
                 levelCount = LevelRepository.HARD_LEVEL_COUNT,
-                levelRange = hardRange
+                levelRange = hardRange,
+                iconRes = R.drawable.ic_star
             )
         )
     }
@@ -107,12 +128,13 @@ class LevelSelectActivity : AppCompatActivity() {
             .count { it in 1..totalLevels }
         val totalStars = progressManager.getTotalStars()
 
-        titleTextView.text = getString(R.string.level_map_title_format, highestUnlocked, totalLevels)
+        titleTextView.text = getString(R.string.difficulty_hub_title)
         subtitleTextView.text = getString(
-            R.string.level_map_subtitle_format,
+            R.string.difficulty_hub_summary_format,
             completedCount,
             totalLevels,
-            totalStars
+            totalStars,
+            highestUnlocked
         )
     }
 
@@ -122,42 +144,63 @@ class LevelSelectActivity : AppCompatActivity() {
         bindDifficultyCard(hardCard, packs[2])
     }
 
-    private fun bindDifficultyCard(card: AppCompatButton, pack: DifficultyPack) {
+    private fun bindDifficultyCard(card: DifficultyCardViews, pack: DifficultyPack) {
         val completedInPack = countCompletedLevels(pack.levelRange)
         val starsInPack = countStarsInRange(pack.levelRange)
         val unlocked = isPackUnlocked(pack)
 
-        val lockHint = if (unlocked) {
-            getString(R.string.difficulty_card_open_hint)
-        } else {
-            getString(R.string.difficulty_card_locked_hint, pack.levelRange.first)
-        }
-
-        card.text = getString(
-            R.string.difficulty_card_home_format,
-            pack.title,
-            pack.subtitle,
-            pack.gridLabel,
+        card.icon.setImageResource(pack.iconRes)
+        card.title.text = pack.title
+        card.subtitle.text = pack.subtitle
+        card.levelsChip.text = getString(
+            R.string.difficulty_chip_levels_format,
             pack.levelCount,
+            pack.gridLabel
+        )
+        card.progressChip.text = getString(
+            R.string.difficulty_chip_progress_format,
             completedInPack,
-            starsInPack,
-            lockHint
+            pack.levelCount
+        )
+        card.starsChip.text = getString(
+            R.string.difficulty_chip_stars_format,
+            starsInPack
         )
 
-        card.alpha = if (unlocked) 1f else 0.82f
-        card.setOnClickListener {
-            if (!unlocked) {
-                card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        card.state.text = if (unlocked) {
+            getString(R.string.difficulty_card_state_unlocked)
+        } else {
+            getString(R.string.difficulty_card_state_locked)
+        }
+        card.state.setBackgroundResource(
+            if (unlocked) {
+                R.drawable.difficulty_state_chip_unlocked
             } else {
-                card.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                R.drawable.difficulty_state_chip_locked
+            }
+        )
+
+        card.action.text = if (unlocked) {
+            getString(R.string.difficulty_card_action_open)
+        } else {
+            getString(R.string.difficulty_card_action_preview)
+        }
+        card.action.alpha = if (unlocked) 1f else 0.9f
+
+        card.root.alpha = if (unlocked) 1f else 0.9f
+        card.root.setOnClickListener {
+            if (!unlocked) {
+                card.root.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            } else {
+                card.root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             }
 
-            openDifficultyPage(pack, card)
+            openDifficultyPage(pack, card.root)
         }
     }
 
     private fun animateCardsOnEntry() {
-        val cards = listOf(easyCard, mediumCard, hardCard)
+        val cards = listOf(easyCard.root, mediumCard.root, hardCard.root)
         cards.forEachIndexed { index, card ->
             card.alpha = 0f
             card.translationY = 36f
@@ -168,6 +211,45 @@ class LevelSelectActivity : AppCompatActivity() {
                 .setStartDelay(80L + (index * 70L))
                 .setInterpolator(OvershootInterpolator(0.92f))
                 .start()
+        }
+    }
+
+    private fun createCardViews(rootId: Int): DifficultyCardViews {
+        val root = findViewById<View>(rootId)
+        return DifficultyCardViews(
+            root = root,
+            icon = root.findViewById(R.id.card_icon),
+            state = root.findViewById(R.id.card_state),
+            title = root.findViewById(R.id.card_title),
+            subtitle = root.findViewById(R.id.card_subtitle),
+            levelsChip = root.findViewById(R.id.card_chip_levels),
+            progressChip = root.findViewById(R.id.card_chip_progress),
+            starsChip = root.findViewById(R.id.card_chip_stars),
+            action = root.findViewById(R.id.card_action)
+        )
+    }
+
+    private fun attachPressAnimation(view: View) {
+        view.setOnTouchListener { target, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    target.animate()
+                        .scaleX(0.985f)
+                        .scaleY(0.985f)
+                        .setDuration(80)
+                        .start()
+                }
+
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    target.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(120)
+                        .start()
+                }
+            }
+            false
         }
     }
 
