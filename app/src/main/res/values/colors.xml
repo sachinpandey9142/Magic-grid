@@ -87,4 +87,26 @@
     <color name="cosmic_particle_dark">#FFFFFF0D</color>
     <color name="cosmic_overlay_blue">#2E5AA840</color>
     <color name="cosmic_overlay_pink">#B8286640</color>
+
+    <!-- ===== MENU PALETTE (Blue/Cyan Glass) ===== -->
+    <color name="menu_primary_top">#45D6FF</color>
+    <color name="menu_primary_bottom">#2D6FFF</color>
+    <color name="menu_primary_shadow">#1A3D83</color>
+    <color name="menu_primary_stroke">#D4F4FF</color>
+
+    <color name="menu_secondary_top">#8D90FF</color>
+    <color name="menu_secondary_bottom">#575CD6</color>
+    <color name="menu_secondary_shadow">#2C2F73</color>
+    <color name="menu_secondary_stroke">#D6D9FF</color>
+
+    <color name="menu_tertiary_top">#2C3A59</color>
+    <color name="menu_tertiary_bottom">#1A243B</color>
+    <color name="menu_tertiary_shadow">#0E162B</color>
+    <color name="menu_tertiary_stroke">#83A9EC</color>
+
+    <color name="menu_panel_border">#6A9DE6FF</color>
+    <color name="menu_panel_glow">#32DFF5FF</color>
+    <color name="menu_title_glow">#7A71FF</color>
+    <color name="menu_chip_fill">#33233558</color>
+    <color name="menu_chip_stroke">#7FC0E6FF</color>
 </resources>

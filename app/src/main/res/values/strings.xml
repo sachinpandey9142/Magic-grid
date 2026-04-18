@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Magic Grid</string>
-    <string name="menu_subtitle">Connect the colors\nto fill the grid</string>
-    <string name="menu_hint">Challenge your logic with every move</string>
+    <string name="menu_subtitle">Connect every color, fill every cell</string>
+    <string name="menu_hint">Smooth paths win stars faster</string>
+    <string name="menu_continue_status_format">Continue Level %1$d • %2$d unlocked • %3$d stars</string>
     <string name="play">Play</string>
     <string name="levels">Levels</string>
     <string name="level_map_title_format">Level Map (%1$d/%2$d unlocked)</string>

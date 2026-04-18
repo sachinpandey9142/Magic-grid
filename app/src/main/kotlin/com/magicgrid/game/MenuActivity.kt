@@ -7,6 +7,7 @@ import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
+import android.widget.TextView
 import com.magicgrid.R
 import com.magicgrid.data.ProgressManager
 
@@ -15,6 +16,7 @@ import com.magicgrid.data.ProgressManager
  */
 class MenuActivity : AppCompatActivity() {
     private lateinit var progressManager: ProgressManager
+    private lateinit var continueStatusText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,8 +28,11 @@ class MenuActivity : AppCompatActivity() {
         val levelsButton = findViewById<Button>(R.id.btn_levels)
         val settingsButton = findViewById<Button>(R.id.btn_settings)
         val exitButton = findViewById<Button>(R.id.btn_exit)
+        continueStatusText = findViewById(R.id.menu_continue_text)
 
-        animateMenuEntry(playButton, levelsButton, settingsButton, exitButton)
+        updateContinueStatus()
+
+        animateMenuEntry(continueStatusText, playButton, levelsButton, settingsButton, exitButton)
 
         playButton.setOnClickListener {
             playTapFeedback(playButton)
@@ -58,6 +63,30 @@ class MenuActivity : AppCompatActivity() {
             playTapFeedback(exitButton)
             finish()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateContinueStatus()
+    }
+
+    private fun updateContinueStatus() {
+        val preferredLevel = progressManager.getCurrentLevel()
+        val levelToContinue = if (progressManager.isLevelUnlocked(preferredLevel)) {
+            preferredLevel
+        } else {
+            progressManager.getHighestUnlockedLevel()
+        }
+
+        val highestUnlocked = progressManager.getHighestUnlockedLevel()
+        val totalStars = progressManager.getTotalStars()
+
+        continueStatusText.text = getString(
+            R.string.menu_continue_status_format,
+            levelToContinue,
+            highestUnlocked,
+            totalStars
+        )
     }
 
     private fun animateMenuEntry(vararg views: View) {
