@@ -1,6 +1,7 @@
 package com.magicgrid.game
 
 import android.content.Intent
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -145,6 +146,9 @@ class MenuActivity : AppCompatActivity() {
             .scaleY(1f)
             .setDuration(560L)
             .setInterpolator(BounceInterpolator())
+            .withEndAction {
+                mergeDotIntoTitle(titleDotMagicI)
+            }
             .start()
 
         titleDotGridI.animate()
@@ -156,7 +160,22 @@ class MenuActivity : AppCompatActivity() {
             .setStartDelay(90L)
             .setInterpolator(BounceInterpolator())
             .withEndAction {
-                appTitle.resumeTwinkle()
+                mergeDotIntoTitle(titleDotGridI) {
+                    appTitle.resumeTwinkle()
+                }
+            }
+            .start()
+    }
+
+    private fun mergeDotIntoTitle(dot: View, onEnd: (() -> Unit)? = null) {
+        dot.animate().cancel()
+        dot.animate()
+            .alpha(0f)
+            .scaleX(0.58f)
+            .scaleY(0.58f)
+            .setDuration(180L)
+            .withEndAction {
+                onEnd?.invoke()
             }
             .start()
     }
@@ -181,15 +200,17 @@ class MenuActivity : AppCompatActivity() {
         val prefixWidth = textPaint.measureText(text, 0, charIndex)
         val charWidth = textPaint.measureText(text, charIndex, charIndex + 1)
         val charCenterX = appTitle.left + prefixWidth + (charWidth / 2f)
+        val charBounds = Rect().also {
+            textPaint.getTextBounds(text, charIndex, charIndex + 1, it)
+        }
 
-        val metrics = textPaint.fontMetrics
         val baselineY = appTitle.top + appTitle.baseline.toFloat()
-        val textTop = baselineY + metrics.ascent
-        val textHeight = metrics.descent - metrics.ascent
-        val dotCenterY = textTop + (textHeight * 0.16f)
+        val topOfIDot = baselineY + charBounds.top
+        val alignmentNudge = resources.displayMetrics.density
+        val dotTop = topOfIDot + alignmentNudge
 
         dot.x = charCenterX - (dot.width / 2f)
-        dot.y = dotCenterY - (dot.height / 2f)
+        dot.y = dotTop
     }
 
     private fun animateMenuEntry(initialDelayMs: Long, vararg views: View) {

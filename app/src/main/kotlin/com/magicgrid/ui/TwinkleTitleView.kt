@@ -24,10 +24,10 @@ class TwinkleTitleView @JvmOverloads constructor(
 
     private val random = Random(System.currentTimeMillis())
 
-    private val baseGlowRadiusPx = 5f * resources.displayMetrics.density
-    private val maxGlowBoostPx = 13f * resources.displayMetrics.density
-    private val strokeWidthPx = 1.7f * resources.displayMetrics.density
+    private val strokeWidthPx = 1.8f * resources.displayMetrics.density
     private val maxStrokeBoostPx = 1.1f * resources.displayMetrics.density
+    private val outerStrokeExtraPx = 1.5f * resources.displayMetrics.density
+    private val outerStrokeBoostPx = 1.6f * resources.displayMetrics.density
 
     private val twinkleDelayMinMs = 900L
     private val twinkleDelayMaxMs = 2500L
@@ -76,23 +76,23 @@ class TwinkleTitleView @JvmOverloads constructor(
         val originalStrokeWidth = paint.strokeWidth
         val originalColor = currentTextColor
 
-        val glowMix = (0.25f + (twinkleStrength * 0.75f)).coerceIn(0f, 1f)
+        val glowMix = (0.32f + (twinkleStrength * 0.68f)).coerceIn(0f, 1f)
         val strokeColor = blendColor(baseStrokeColor, Color.WHITE, glowMix)
+        val outerStrokeColor = adjustAlpha(strokeColor, 0.42f + (twinkleStrength * 0.36f))
 
         paint.style = Paint.Style.STROKE
         paint.strokeJoin = Paint.Join.ROUND
-        paint.strokeMiter = 10f
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeMiter = 12f
+        paint.strokeWidth = strokeWidthPx + outerStrokeExtraPx + (twinkleStrength * outerStrokeBoostPx)
+        paint.color = outerStrokeColor
+        super.onDraw(canvas)
+
+        paint.style = Paint.Style.STROKE
         paint.strokeWidth = strokeWidthPx + (twinkleStrength * maxStrokeBoostPx)
-        paint.setShadowLayer(
-            baseGlowRadiusPx + (twinkleStrength * maxGlowBoostPx),
-            0f,
-            0f,
-            strokeColor
-        )
         paint.color = strokeColor
         super.onDraw(canvas)
 
-        paint.clearShadowLayer()
         paint.style = Paint.Style.FILL
         paint.color = originalColor
         super.onDraw(canvas)
@@ -156,5 +156,10 @@ class TwinkleTitleView @JvmOverloads constructor(
         val blue = Color.blue(from) + ((Color.blue(to) - Color.blue(from)) * amount).toInt()
 
         return Color.argb(alpha, red, green, blue)
+    }
+
+    private fun adjustAlpha(color: Int, alphaFraction: Float): Int {
+        val finalAlpha = (Color.alpha(color) * alphaFraction.coerceIn(0f, 1f)).toInt()
+        return Color.argb(finalAlpha, Color.red(color), Color.green(color), Color.blue(color))
     }
 }
