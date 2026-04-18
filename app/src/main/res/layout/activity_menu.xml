@@ -39,7 +39,7 @@
             <FrameLayout
                 android:id="@+id/title_effects_container"
                 android:layout_width="wrap_content"
-                android:layout_height="92dp"
+                android:layout_height="96dp"
                 android:layout_marginBottom="10dp"
                 android:clipChildren="false"
                 android:clipToPadding="false">
@@ -53,27 +53,13 @@
                     android:text="@string/app_name"
                     style="@style/TitleLarge"
                     android:textColor="@color/white"
-                    android:fontFamily="sans-serif-black"
-                    android:textSize="54sp"
-                    android:letterSpacing="0.06"
+                    android:fontFamily="sans-serif-medium"
+                    android:textSize="50sp"
+                    android:letterSpacing="0.035"
                     android:maxLines="1"
                     android:singleLine="true"
                     android:includeFontPadding="false"
                     android:ellipsize="end" />
-
-                <View
-                    android:id="@+id/title_dot_magic_i"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:alpha="0"
-                    android:background="@drawable/title_i_dot_luminous" />
-
-                <View
-                    android:id="@+id/title_dot_grid_i"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:alpha="0"
-                    android:background="@drawable/title_i_dot_luminous" />
 
             </FrameLayout>
 
