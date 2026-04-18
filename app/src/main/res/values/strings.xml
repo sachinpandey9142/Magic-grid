@@ -4,6 +4,8 @@
     <string name="menu_subtitle">Connect every color, fill every cell</string>
     <string name="menu_hint">Smooth paths win stars faster</string>
     <string name="menu_continue_status_format">Continue Level %1$d • %2$d unlocked • %3$d stars</string>
+    <string name="menu_coin_balance_format">Coins: %1$d</string>
+    <string name="menu_coin_balance_placeholder">Coins: 0</string>
     <string name="play">Play</string>
     <string name="levels">Levels</string>
     <string name="level_map_title_format">Level Map (%1$d/%2$d unlocked)</string>
@@ -58,6 +60,14 @@
     <string name="reset">Reset</string>
     <string name="undo">Undo</string>
     <string name="hint">Hint</string>
+    <string name="hint_not_enough_coins">Need %1$d coins for a hint.</string>
+    <string name="hint_no_move_available">No valid hint move available right now.</string>
+    <string name="coins_earned_format">+%1$d coins earned!</string>
+    <string name="hint_purchase_title">Buy Hint?</string>
+    <string name="hint_purchase_message">Spend %1$d coins for one hint?
+Current coins: %2$d</string>
+    <string name="buy_hint">Buy Hint</string>
+    <string name="dialog_cancel">Cancel</string>
     <string name="menu">Menu</string>
     <string name="next_level">Next Level</string>
     <string name="replay">Replay</string>

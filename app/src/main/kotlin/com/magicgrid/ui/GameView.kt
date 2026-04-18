@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.magicgrid.controller.GameManager
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * Custom view for rendering the game grid, cells, paths, and handling touch input.
@@ -125,6 +126,39 @@ class GameView @JvmOverloads constructor(
     private var completedPathColor: Int? = null
     private val COMPLETION_ANIMATION_DURATION = 600f  // ms
 
+    private data class HintOverlay(
+        val color: Int,
+        val route: List<Pair<Int, Int>>
+    )
+
+    private var hintOverlay: HintOverlay? = null
+    private var hintOverlayRemainingTime = 0f
+    private val HINT_OVERLAY_DURATION = 2200f
+
+    private val hintGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    private val hintLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    private val hintCellOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    private val hintCellInnerOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
     fun setGameManager(gm: GameManager) {
         gameManager = gm
         if (width > 0 && height > 0) {
@@ -155,6 +189,17 @@ class GameView @JvmOverloads constructor(
             isPathActive = false
             currentTouchColor = null
         }
+        postInvalidateOnAnimation()
+    }
+
+    fun showHintRoute(route: List<Pair<Int, Int>>, color: Int) {
+        if (route.size < 2) return
+
+        hintOverlay = HintOverlay(
+            color = color,
+            route = route.toList()
+        )
+        hintOverlayRemainingTime = HINT_OVERLAY_DURATION
         postInvalidateOnAnimation()
     }
 
@@ -278,6 +323,7 @@ class GameView @JvmOverloads constructor(
 
         // Update completion animation
         updateCompletionAnimation()
+        updateHintOverlayAnimation()
 
         // Draw grid (no background - cosmic background shows through)
         drawGrid(canvas)
@@ -293,9 +339,12 @@ class GameView @JvmOverloads constructor(
 
         // Draw connecting lines/paths
         drawPaths(canvas)
+
+        // Draw hint guidance on top of paths
+        drawHintOverlay(canvas)
         
         // Continue animation if needed
-        if (completedPathAnimationTime > 0f) {
+        if (completedPathAnimationTime > 0f || hintOverlayRemainingTime > 0f) {
             postInvalidateOnAnimation()
         }
     }
@@ -588,6 +637,90 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    private fun updateHintOverlayAnimation() {
+        if (hintOverlayRemainingTime > 0f) {
+            hintOverlayRemainingTime -= 16f
+            if (hintOverlayRemainingTime <= 0f) {
+                hintOverlayRemainingTime = 0f
+                hintOverlay = null
+            }
+        }
+    }
+
+    private fun drawHintOverlay(canvas: Canvas) {
+        val overlay = hintOverlay ?: return
+        if (hintOverlayRemainingTime <= 0f) return
+        if (overlay.route.size < 2) return
+
+        val elapsed = (HINT_OVERLAY_DURATION - hintOverlayRemainingTime).coerceAtLeast(0f)
+        val progress = (elapsed / HINT_OVERLAY_DURATION).coerceIn(0f, 1f)
+        val fade = (1f - (progress * 0.4f)).coerceIn(0f, 1f)
+        val pulse = (0.76f + (0.24f * sin(elapsed / 140f))).coerceIn(0.45f, 1f)
+
+        val glowColor = getPremiumGlowColor(overlay.color)
+
+        hintGlowPaint.color = glowColor
+        hintGlowPaint.alpha = (130f * pulse * fade).toInt().coerceIn(0, 255)
+        hintGlowPaint.strokeWidth = maxOf(9f, cellSize * 0.24f)
+        hintGlowPaint.setShadowLayer(maxOf(10f, cellSize * 0.15f), 0f, 0f, glowColor)
+
+        hintLinePaint.color = Color.WHITE
+        hintLinePaint.alpha = (235f * fade).toInt().coerceIn(0, 255)
+        hintLinePaint.strokeWidth = maxOf(3.2f, cellSize * 0.09f)
+        hintLinePaint.pathEffect = DashPathEffect(
+            floatArrayOf(maxOf(10f, cellSize * 0.3f), maxOf(6f, cellSize * 0.2f)),
+            elapsed / 2.4f
+        )
+
+        for (index in 0 until overlay.route.lastIndex) {
+            val from = overlay.route[index]
+            val to = overlay.route[index + 1]
+            val (fromX, fromY) = gridToScreenCoordinates(from.first, from.second)
+            val (toX, toY) = gridToScreenCoordinates(to.first, to.second)
+
+            canvas.drawLine(fromX, fromY, toX, toY, hintGlowPaint)
+            canvas.drawLine(fromX, fromY, toX, toY, hintLinePaint)
+        }
+
+        hintLinePaint.pathEffect = null
+        hintGlowPaint.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+
+        overlay.route.distinct().forEach { point ->
+            drawHintCellOutline(canvas, point.first, point.second, glowColor, pulse, fade)
+        }
+    }
+
+    private fun drawHintCellOutline(
+        canvas: Canvas,
+        row: Int,
+        col: Int,
+        glowColor: Int,
+        pulse: Float,
+        fade: Float
+    ) {
+        val spacing = 5f
+        val left = gridStartX + col * cellSize + spacing / 2
+        val top = gridStartY + row * cellSize + spacing / 2
+        val right = left + cellSize - spacing
+        val bottom = top + cellSize - spacing
+        val radius = 10f
+
+        cellRect.set(left, top, right, bottom)
+
+        hintCellOutlinePaint.color = glowColor
+        hintCellOutlinePaint.alpha = (220f * fade).toInt().coerceIn(0, 255)
+        hintCellOutlinePaint.strokeWidth = maxOf(3.8f, cellSize * 0.085f)
+        hintCellOutlinePaint.setShadowLayer(maxOf(6f, cellSize * 0.1f), 0f, 0f, glowColor)
+        canvas.drawRoundRect(cellRect, radius, radius, hintCellOutlinePaint)
+
+        hintCellInnerOutlinePaint.color = Color.WHITE
+        hintCellInnerOutlinePaint.alpha = (140f * pulse * fade).toInt().coerceIn(0, 255)
+        hintCellInnerOutlinePaint.strokeWidth = maxOf(1.7f, cellSize * 0.04f)
+        canvas.drawRoundRect(cellRect, radius, radius, hintCellInnerOutlinePaint)
+
+        hintCellOutlinePaint.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+    }
+
     /**
      * Trigger completion animation for a path - called when path is completed
      */
@@ -618,6 +751,11 @@ class GameView @JvmOverloads constructor(
      * Handle touch down - start a new path from an endpoint
      */
     private fun handleTouchDown(x: Float, y: Float): Boolean {
+        if (hintOverlay != null) {
+            hintOverlay = null
+            hintOverlayRemainingTime = 0f
+        }
+
         lastTouchX = x
         lastTouchY = y
 

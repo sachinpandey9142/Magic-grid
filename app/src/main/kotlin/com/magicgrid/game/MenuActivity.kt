@@ -26,6 +26,7 @@ import kotlin.math.sin
 class MenuActivity : AppCompatActivity() {
     private lateinit var progressManager: ProgressManager
     private lateinit var continueStatusText: TextView
+    private lateinit var coinStatusText: TextView
     private lateinit var appTitle: TwinkleTitleView
     private var dotBounceSoundPlayer: DotBounceSoundPlayer? = null
 
@@ -40,6 +41,7 @@ class MenuActivity : AppCompatActivity() {
         val settingsButton = findViewById<Button>(R.id.btn_settings)
         val exitButton = findViewById<Button>(R.id.btn_exit)
         continueStatusText = findViewById(R.id.menu_continue_text)
+        coinStatusText = findViewById(R.id.menu_coin_text)
         appTitle = findViewById(R.id.app_title)
 
         dotBounceSoundPlayer = DotBounceSoundPlayer()
@@ -54,7 +56,15 @@ class MenuActivity : AppCompatActivity() {
         updateContinueStatus()
         prepareTitleIntroAnimation()
 
-        animateMenuEntry(780L, continueStatusText, playButton, levelsButton, settingsButton, exitButton)
+        animateMenuEntry(
+            780L,
+            continueStatusText,
+            coinStatusText,
+            playButton,
+            levelsButton,
+            settingsButton,
+            exitButton
+        )
 
         playButton.setOnClickListener {
             playTapFeedback(playButton)
@@ -116,6 +126,7 @@ class MenuActivity : AppCompatActivity() {
             highestUnlocked,
             totalStars
         )
+        coinStatusText.text = getString(R.string.menu_coin_balance_format, progressManager.getCoins())
     }
 
     private fun prepareTitleIntroAnimation() {

@@ -18,6 +18,10 @@ class ProgressManager(context: Context) {
         private const val LEVEL_TIMES_KEY = "level_times"
         private const val LEVEL_STARS_KEY = "level_stars"
         private const val LEVEL_HINTS_KEY = "level_hints"
+        private const val COINS_BALANCE_KEY = "coins_balance"
+        private const val LEVEL_COIN_REWARD_KEY = "level_coin_reward"
+        private const val DEFAULT_STARTING_COINS = 100
+        private const val COINS_PER_STAR = 15
     }
 
     /**
@@ -143,6 +147,60 @@ class ProgressManager(context: Context) {
     }
 
     /**
+     * Get current coin balance
+     */
+    fun getCoins(): Int {
+        return sharedPreferences.getInt(COINS_BALANCE_KEY, DEFAULT_STARTING_COINS).coerceAtLeast(0)
+    }
+
+    /**
+     * Add coins to player balance and return the updated balance
+     */
+    fun addCoins(amount: Int): Int {
+        if (amount <= 0) return getCoins()
+
+        val updated = getCoins() + amount
+        sharedPreferences.edit().putInt(COINS_BALANCE_KEY, updated).apply()
+        return updated
+    }
+
+    /**
+     * Spend coins from player balance
+     */
+    fun spendCoins(amount: Int): Boolean {
+        if (amount <= 0) return true
+
+        val current = getCoins()
+        if (current < amount) return false
+
+        sharedPreferences.edit().putInt(COINS_BALANCE_KEY, current - amount).apply()
+        return true
+    }
+
+    /**
+     * Reward coins based on best star improvement for a level
+     * Prevents farming by replaying a level without improving stars.
+     */
+    fun grantCoinsForLevelResult(levelId: Int, starsEarned: Int): Int {
+        val earned = starsEarned.coerceIn(1, 3)
+        val rewardMap = getLevelCoinRewardMap().toMutableMap()
+        val previouslyRewardedStars = rewardMap[levelId.toString()]?.toIntOrNull() ?: 0
+
+        if (earned <= previouslyRewardedStars) {
+            return 0
+        }
+
+        val starDelta = earned - previouslyRewardedStars
+        val coinReward = starDelta * COINS_PER_STAR
+
+        addCoins(coinReward)
+        rewardMap[levelId.toString()] = earned.toString()
+        saveMap(LEVEL_COIN_REWARD_KEY, rewardMap)
+
+        return coinReward
+    }
+
+    /**
      * Reset all progress
      */
     fun resetProgress() {
@@ -150,6 +208,7 @@ class ProgressManager(context: Context) {
             .clear()
             .putInt(HIGHEST_UNLOCKED_LEVEL_KEY, 1)
             .putInt(CURRENT_LEVEL_KEY, 1)
+            .putInt(COINS_BALANCE_KEY, DEFAULT_STARTING_COINS)
             .apply()
     }
 
@@ -231,6 +290,10 @@ class ProgressManager(context: Context) {
 
     private fun getLevelHintsMap(): Map<String, String> {
         return parseMap(LEVEL_HINTS_KEY)
+    }
+
+    private fun getLevelCoinRewardMap(): Map<String, String> {
+        return parseMap(LEVEL_COIN_REWARD_KEY)
     }
 
     private fun parseMap(key: String): Map<String, String> {

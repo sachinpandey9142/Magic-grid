@@ -2,6 +2,9 @@ package com.magicgrid.game
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ImageSpan
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -12,6 +15,8 @@ import android.widget.Space
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 import com.magicgrid.R
 import com.magicgrid.data.Level
 import com.magicgrid.data.LevelRepository
@@ -256,7 +261,7 @@ class DifficultyLevelsActivity : AppCompatActivity() {
         }
 
         nodeButton.text = if (isCompleted) {
-            getString(R.string.level_node_completed_format, level.id, stars.coerceAtLeast(1))
+            buildCompletedLevelLabel(level.id, stars)
         } else {
             getString(R.string.level_node_number_format, level.id)
         }
@@ -270,7 +275,7 @@ class DifficultyLevelsActivity : AppCompatActivity() {
 
         when {
             isCompleted -> {
-                nodeButton.setBackgroundResource(R.drawable.level_node_completed)
+                nodeButton.setBackgroundResource(resolveCompletedNodeBackground(stars))
                 nodeButton.alpha = 1f
             }
             isUnlocked -> {
@@ -304,6 +309,43 @@ class DifficultyLevelsActivity : AppCompatActivity() {
             .start()
 
         return nodeButton
+    }
+
+    private fun buildCompletedLevelLabel(levelId: Int, earnedStars: Int): CharSequence {
+        val stars = earnedStars.coerceIn(1, 3)
+        val starTint = ContextCompat.getColor(this, R.color.accent_gold)
+        val builder = SpannableStringBuilder()
+        builder.append(levelId.toString())
+        builder.append("\n")
+
+        repeat(stars) { index ->
+            if (index > 0) {
+                builder.append(" ")
+            }
+
+            val start = builder.length
+            builder.append("*")
+
+            val starDrawable = ContextCompat.getDrawable(this, R.drawable.ic_star)?.mutate()
+            if (starDrawable != null) {
+                val tintedDrawable = DrawableCompat.wrap(starDrawable)
+                DrawableCompat.setTint(tintedDrawable, starTint)
+                val size = dp(12)
+                tintedDrawable.setBounds(0, 0, size, size)
+                val starSpan = ImageSpan(tintedDrawable, ImageSpan.ALIGN_BOTTOM)
+                builder.setSpan(starSpan, start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+
+        return builder
+    }
+
+    private fun resolveCompletedNodeBackground(earnedStars: Int): Int {
+        return when (earnedStars.coerceIn(1, 3)) {
+            1 -> R.drawable.level_node_completed_one_star
+            2 -> R.drawable.level_node_completed_two_stars
+            else -> R.drawable.level_node_completed
+        }
     }
 
     private fun createLevelSpacer(): Space {
