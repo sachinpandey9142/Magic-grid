@@ -25,7 +25,8 @@ class LevelSelectActivity : AppCompatActivity() {
         val gridLabel: String,
         val levelCount: Int,
         val levelRange: IntRange,
-        val iconRes: Int
+        val iconRes: Int,
+        val cardBackgroundRes: Int
     )
 
     private data class DifficultyCardViews(
@@ -97,7 +98,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 gridLabel = "5x5",
                 levelCount = LevelRepository.EASY_LEVEL_COUNT,
                 levelRange = easyRange,
-                iconRes = R.drawable.ic_play
+                iconRes = R.drawable.ic_play,
+                cardBackgroundRes = R.drawable.difficulty_card_easy
             ),
             DifficultyPack(
                 key = DifficultyLevelsActivity.DIFFICULTY_MEDIUM,
@@ -106,7 +108,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 gridLabel = "6x6",
                 levelCount = LevelRepository.MEDIUM_LEVEL_COUNT,
                 levelRange = mediumRange,
-                iconRes = R.drawable.ic_grid
+                iconRes = R.drawable.ic_grid,
+                cardBackgroundRes = R.drawable.difficulty_card_medium
             ),
             DifficultyPack(
                 key = DifficultyLevelsActivity.DIFFICULTY_HARD,
@@ -115,7 +118,8 @@ class LevelSelectActivity : AppCompatActivity() {
                 gridLabel = "7x7",
                 levelCount = LevelRepository.HARD_LEVEL_COUNT,
                 levelRange = hardRange,
-                iconRes = R.drawable.ic_star
+                iconRes = R.drawable.ic_star,
+                cardBackgroundRes = R.drawable.difficulty_card_hard
             )
         )
     }
@@ -149,6 +153,7 @@ class LevelSelectActivity : AppCompatActivity() {
         val starsInPack = countStarsInRange(pack.levelRange)
         val unlocked = isPackUnlocked(pack)
 
+        card.root.setBackgroundResource(pack.cardBackgroundRes)
         card.icon.setImageResource(pack.iconRes)
         card.title.text = pack.title
         card.subtitle.text = pack.subtitle

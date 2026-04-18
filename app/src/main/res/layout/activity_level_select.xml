@@ -75,64 +75,81 @@
             android:textColor="@color/text_secondary"
             android:letterSpacing="0.04" />
 
-        <!-- SCROLLABLE DIFFICULTY CARDS -->
-        <ScrollView
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="20dp"
-            android:scrollbarStyle="outsideOverlay"
-            android:fadeScrollbars="true">
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/difficulty_cards_panel"
+            android:padding="10dp">
 
-            <LinearLayout
+            <!-- SCROLLABLE DIFFICULTY CARDS -->
+            <ScrollView
+                android:id="@+id/difficulty_cards_scroll"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="10dp">
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fillViewport="true"
+                android:paddingStart="2dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="2dp"
+                android:paddingBottom="6dp"
+                android:scrollbarStyle="outsideOverlay"
+                android:fadeScrollbars="true"
+                android:overScrollMode="ifContentScrolls">
 
-                <include
-                    android:id="@+id/card_easy"
-                    layout="@layout/view_difficulty_card"
+                <LinearLayout
+                    android:id="@+id/difficulty_cards_container"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/difficulty_card_easy" />
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="6dp">
 
-                <include
-                    android:id="@+id/card_medium"
-                    layout="@layout/view_difficulty_card"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/difficulty_card_medium" />
+                    <include
+                        android:id="@+id/card_easy"
+                        layout="@layout/view_difficulty_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:layout_marginBottom="10dp" />
 
-                <include
-                    android:id="@+id/card_hard"
-                    layout="@layout/view_difficulty_card"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    android:background="@drawable/difficulty_card_hard" />
+                    <include
+                        android:id="@+id/card_medium"
+                        layout="@layout/view_difficulty_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:layout_marginBottom="10dp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="0.03"
-                    android:text="@string/difficulty_hub_hint"
-                    android:textColor="@color/white_90"
-                    android:textSize="13sp" />
+                    <include
+                        android:id="@+id/card_hard"
+                        layout="@layout/view_difficulty_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:layout_marginBottom="12dp" />
 
-            </LinearLayout>
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="8dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.03"
+                        android:text="@string/difficulty_hub_hint"
+                        android:textColor="@color/white_90"
+                        android:textSize="13sp" />
 
-        </ScrollView>
+                </LinearLayout>
+
+            </ScrollView>
+
+        </FrameLayout>
 
     </LinearLayout>
 
