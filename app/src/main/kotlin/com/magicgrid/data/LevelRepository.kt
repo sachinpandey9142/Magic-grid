@@ -28,7 +28,7 @@ object LevelRepository {
     private fun initializeLevels() {
         levels.clear()
 
-        // EASY LEVELS (5x5, 2-3 colors) -> 50 levels
+        // EASY LEVELS (5x5, 4-5 colors) -> 50 levels
         addGeneratedLevels(
             count = EASY_LEVEL_COUNT,
             gridSize = EASY_GRID_SIZE,
@@ -36,7 +36,7 @@ object LevelRepository {
             namePrefix = "Easy Level"
         )
 
-        // MEDIUM LEVELS (6x6, 3-4 colors) -> 30 levels
+        // MEDIUM LEVELS (6x6, 5-6 colors) -> 30 levels
         addGeneratedLevels(
             count = MEDIUM_LEVEL_COUNT,
             gridSize = MEDIUM_GRID_SIZE,
@@ -44,7 +44,7 @@ object LevelRepository {
             namePrefix = "Medium Level"
         )
 
-        // HARD LEVELS (7x7, 4-5 colors) -> 20 levels
+        // HARD LEVELS (7x7, 6-7 colors) -> 20 levels
         addGeneratedLevels(
             count = HARD_LEVEL_COUNT,
             gridSize = HARD_GRID_SIZE,

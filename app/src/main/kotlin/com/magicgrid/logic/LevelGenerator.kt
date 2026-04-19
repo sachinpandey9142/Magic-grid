@@ -1,5 +1,6 @@
 package com.magicgrid.logic
 
+import kotlin.math.ceil
 import kotlin.random.Random
 
 /**
@@ -8,6 +9,18 @@ import kotlin.random.Random
  */
 class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     private val random = Random(seed)
+
+    private data class DifficultyProfile(
+        val colorRange: IntRange,
+        val segmentSlack: Int,
+        val spreadFactor: Double,
+        val avgPairDistanceFactor: Double,
+        val minPairDistance: Int,
+        val interiorEndpointRatio: Double,
+        val maxClosePairs: Int,
+        val pathShuffleMultiplier: Int,
+        val attempts: Int
+    )
 
     private val palette = listOf(
         0xFFFF5252.toInt(), // Red
@@ -23,7 +36,7 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     /**
      * Generate a guaranteed-solvable level.
      * Construction strategy:
-     * 1) Build a Hamiltonian snake path that visits every cell exactly once.
+     * 1) Build a Hamiltonian path that visits every cell exactly once.
      * 2) Split that path into contiguous color segments.
      * 3) Use segment endpoints as dots.
      *
@@ -31,40 +44,72 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
      * at least one valid full-board solution is always guaranteed.
      */
     fun generateLevel(gridSize: Int, difficulty: String): GeneratedLevel? {
-        val colorCount = pickColorCount(difficulty)
+        val profile = resolveDifficultyProfile(difficulty, gridSize)
+        val minSegmentLength = maxOf(3, gridSize - profile.segmentSlack)
+        val colorCount = pickColorCount(profile.colorRange, gridSize, minSegmentLength)
 
-        // Try a few randomized transforms / splits for variety.
-        repeat(24) {
-            val candidate = buildGuaranteedEndpoints(gridSize, colorCount)
+        // Try strict generation first to keep tiers meaningfully separated.
+        repeat(profile.attempts) {
+            val candidate = buildGuaranteedEndpoints(
+                gridSize = gridSize,
+                colorCount = colorCount,
+                minSegmentLength = minSegmentLength,
+                pathShuffleSteps = gridSize * gridSize * profile.pathShuffleMultiplier,
+                profile = profile
+            )
             if (candidate != null) {
-                return GeneratedLevel(
-                    gridSize = gridSize,
-                    rows = gridSize,
-                    cols = gridSize,
-                    endpoints = candidate.map { ep ->
-                        Endpoint(
-                            ep.color,
-                            ep.startRow,
-                            ep.startCol,
-                            ep.endRow,
-                            ep.endCol
-                        )
-                    },
-                    difficulty = difficulty,
-                    solvable = true
-                )
+                return toGeneratedLevel(gridSize, difficulty, candidate)
             }
         }
 
-        // Deterministic fallback that still guarantees a full-grid solution.
-        val fallback = buildGuaranteedEndpoints(gridSize, colorCount, transformId = 0, strictDistribution = false)
-            ?: return null
+        // Relax constraints slightly if strict generation could not find enough variety.
+        val relaxedProfile = profile.copy(
+            spreadFactor = profile.spreadFactor * 0.9,
+            avgPairDistanceFactor = profile.avgPairDistanceFactor * 0.9,
+            minPairDistance = maxOf(2, profile.minPairDistance - 1),
+            interiorEndpointRatio = profile.interiorEndpointRatio * 0.82,
+            maxClosePairs = profile.maxClosePairs + 1
+        )
 
+        val relaxed = buildGuaranteedEndpoints(
+            gridSize = gridSize,
+            colorCount = colorCount,
+            minSegmentLength = maxOf(3, minSegmentLength - 1),
+            pathShuffleSteps = gridSize * gridSize * maxOf(2, profile.pathShuffleMultiplier / 2),
+            profile = relaxedProfile,
+            transformId = 0
+        )
+
+        if (relaxed != null) {
+            return toGeneratedLevel(gridSize, difficulty, relaxed)
+        }
+
+        // Emergency fallback that keeps boards solvable and avoids generation deadlocks.
+        val emergencyMinSegment = maxOf(3, gridSize - 2)
+        val emergencyColorCount = pickColorCount(3..5, gridSize, emergencyMinSegment)
+        val emergency = buildGuaranteedEndpoints(
+            gridSize = gridSize,
+            colorCount = emergencyColorCount,
+            minSegmentLength = emergencyMinSegment,
+            pathShuffleSteps = gridSize * gridSize,
+            profile = null,
+            transformId = 0,
+            strictDistribution = false
+        ) ?: return null
+
+        return toGeneratedLevel(gridSize, difficulty, emergency)
+    }
+
+    private fun toGeneratedLevel(
+        gridSize: Int,
+        difficulty: String,
+        endpoints: List<ColorEndpointSpec>
+    ): GeneratedLevel {
         return GeneratedLevel(
             gridSize = gridSize,
             rows = gridSize,
             cols = gridSize,
-            endpoints = fallback.map { ep ->
+            endpoints = endpoints.map { ep ->
                 Endpoint(
                     ep.color,
                     ep.startRow,
@@ -78,15 +123,65 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         )
     }
 
-    private fun pickColorCount(difficulty: String): Int {
-        val range = when {
-            difficulty.equals("easy", ignoreCase = true) -> 2..3
-            difficulty.equals("medium", ignoreCase = true) -> 3..4
-            difficulty.equals("hard", ignoreCase = true) -> 4..5
-            else -> 3..4
-        }
+    private fun resolveDifficultyProfile(difficulty: String, gridSize: Int): DifficultyProfile {
+        return when {
+            difficulty.equals("easy", ignoreCase = true) -> DifficultyProfile(
+                colorRange = 4..5,
+                segmentSlack = 1,
+                spreadFactor = 0.72,
+                avgPairDistanceFactor = 0.76,
+                minPairDistance = maxOf(3, gridSize / 2),
+                interiorEndpointRatio = 0.35,
+                maxClosePairs = 2,
+                pathShuffleMultiplier = 4,
+                attempts = 56
+            )
 
-        return nextIntInclusive(range.first, range.last)
+            difficulty.equals("medium", ignoreCase = true) -> DifficultyProfile(
+                colorRange = 5..6,
+                segmentSlack = 1,
+                spreadFactor = 0.76,
+                avgPairDistanceFactor = 0.84,
+                minPairDistance = maxOf(3, (gridSize / 2) + 1),
+                interiorEndpointRatio = 0.43,
+                maxClosePairs = 1,
+                pathShuffleMultiplier = 6,
+                attempts = 76
+            )
+
+            difficulty.equals("hard", ignoreCase = true) -> DifficultyProfile(
+                colorRange = 6..7,
+                segmentSlack = 2,
+                spreadFactor = 0.8,
+                avgPairDistanceFactor = 0.9,
+                minPairDistance = maxOf(4, (gridSize / 2) + 1),
+                interiorEndpointRatio = 0.5,
+                maxClosePairs = 0,
+                pathShuffleMultiplier = 8,
+                attempts = 96
+            )
+
+            else -> DifficultyProfile(
+                colorRange = 5..6,
+                segmentSlack = 1,
+                spreadFactor = 0.74,
+                avgPairDistanceFactor = 0.8,
+                minPairDistance = maxOf(3, gridSize / 2),
+                interiorEndpointRatio = 0.4,
+                maxClosePairs = 1,
+                pathShuffleMultiplier = 5,
+                attempts = 64
+            )
+        }
+    }
+
+    private fun pickColorCount(range: IntRange, gridSize: Int, minSegmentLength: Int): Int {
+        val maxBySegmentLength = (gridSize * gridSize) / maxOf(1, minSegmentLength)
+        val maxAllowed = minOf(range.last, maxBySegmentLength, palette.size)
+        if (maxAllowed <= 2) return 2
+
+        val minAllowed = minOf(range.first, maxAllowed).coerceAtLeast(2)
+        return nextIntInclusive(minAllowed, maxAllowed)
     }
 
     private fun nextIntInclusive(min: Int, max: Int): Int {
@@ -97,17 +192,20 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     private fun buildGuaranteedEndpoints(
         gridSize: Int,
         colorCount: Int,
+        minSegmentLength: Int,
+        pathShuffleSteps: Int,
+        profile: DifficultyProfile?,
         transformId: Int? = null,
         strictDistribution: Boolean = true
     ): List<ColorEndpointSpec>? {
         val snake = buildSnakePath(gridSize)
+        val shuffled = randomizeHamiltonianPath(snake, gridSize, pathShuffleSteps)
         val transformed = applyTransform(
-            snake,
+            shuffled,
             gridSize,
             transformId ?: random.nextInt(8)
         )
 
-        val minSegmentLength = maxOf(3, gridSize - 1)
         val segmentLengths = splitIntoContiguousSegments(transformed.size, colorCount, minSegmentLength)
             ?: return null
 
@@ -131,11 +229,72 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
             cursor += segmentLength
         }
 
-        if (strictDistribution && !passesDistributionCheck(endpoints, gridSize)) {
-            return null
+        if (strictDistribution) {
+            val passes = if (profile != null) {
+                passesDifficultyChecks(endpoints, gridSize, profile)
+            } else {
+                passesDistributionCheck(endpoints, gridSize, thresholdFactor = 0.65)
+            }
+
+            if (!passes) return null
         }
 
         return endpoints
+    }
+
+    private fun randomizeHamiltonianPath(
+        basePath: List<Pair<Int, Int>>,
+        gridSize: Int,
+        shuffleSteps: Int
+    ): List<Pair<Int, Int>> {
+        var path = basePath.toMutableList()
+        if (path.size < 4) return path
+
+        repeat(shuffleSteps) {
+            if (random.nextBoolean()) {
+                val head = path.first()
+                val nextToHead = path[1]
+                val candidateIndices = getOrthogonalNeighbors(head, gridSize)
+                    .filter { it != nextToHead }
+                    .map { neighbor -> path.indexOf(neighbor) }
+                    .filter { index -> index > 1 }
+
+                if (candidateIndices.isEmpty()) return@repeat
+
+                val spliceIndex = candidateIndices[random.nextInt(candidateIndices.size)]
+                val reversedPrefix = path.subList(0, spliceIndex).asReversed()
+                val suffix = path.subList(spliceIndex, path.size)
+                path = (reversedPrefix + suffix).toMutableList()
+            } else {
+                val tail = path.last()
+                val prevToTail = path[path.size - 2]
+                val candidateIndices = getOrthogonalNeighbors(tail, gridSize)
+                    .filter { it != prevToTail }
+                    .map { neighbor -> path.indexOf(neighbor) }
+                    .filter { index -> index in 0 until (path.size - 2) }
+
+                if (candidateIndices.isEmpty()) return@repeat
+
+                val spliceIndex = candidateIndices[random.nextInt(candidateIndices.size)]
+                val prefix = path.subList(0, spliceIndex + 1)
+                val reversedSuffix = path.subList(spliceIndex + 1, path.size).asReversed()
+                path = (prefix + reversedSuffix).toMutableList()
+            }
+        }
+
+        return if (random.nextBoolean()) path else path.asReversed()
+    }
+
+    private fun getOrthogonalNeighbors(cell: Pair<Int, Int>, gridSize: Int): List<Pair<Int, Int>> {
+        val (row, col) = cell
+        val neighbors = mutableListOf<Pair<Int, Int>>()
+
+        if (row > 0) neighbors.add(Pair(row - 1, col))
+        if (row < gridSize - 1) neighbors.add(Pair(row + 1, col))
+        if (col > 0) neighbors.add(Pair(row, col - 1))
+        if (col < gridSize - 1) neighbors.add(Pair(row, col + 1))
+
+        return neighbors
     }
 
     private fun buildSnakePath(gridSize: Int): List<Pair<Int, Int>> {
@@ -209,7 +368,45 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         return segments
     }
 
-    private fun passesDistributionCheck(endpoints: List<ColorEndpointSpec>, gridSize: Int): Boolean {
+    private fun passesDifficultyChecks(
+        endpoints: List<ColorEndpointSpec>,
+        gridSize: Int,
+        profile: DifficultyProfile
+    ): Boolean {
+        if (!passesDistributionCheck(endpoints, gridSize, profile.spreadFactor)) return false
+
+        val pairDistances = endpoints.map { ep ->
+            kotlin.math.abs(ep.startRow - ep.endRow) + kotlin.math.abs(ep.startCol - ep.endCol)
+        }
+
+        if (pairDistances.isEmpty()) return false
+        if (pairDistances.any { it < profile.minPairDistance }) return false
+
+        val avgPairDistance = pairDistances.average()
+        if (avgPairDistance < gridSize * profile.avgPairDistanceFactor) return false
+
+        val points = endpoints.flatMap { ep ->
+            listOf(Pair(ep.startRow, ep.startCol), Pair(ep.endRow, ep.endCol))
+        }
+
+        val interiorPoints = points.count { (row, col) ->
+            row in 1 until (gridSize - 1) && col in 1 until (gridSize - 1)
+        }
+        val requiredInterior = ceil(points.size * profile.interiorEndpointRatio).toInt()
+        if (interiorPoints < requiredInterior) return false
+
+        val closePairThreshold = maxOf(2, (gridSize / 2) - 1)
+        val closePairs = pairDistances.count { it <= closePairThreshold }
+        if (closePairs > profile.maxClosePairs) return false
+
+        return true
+    }
+
+    private fun passesDistributionCheck(
+        endpoints: List<ColorEndpointSpec>,
+        gridSize: Int,
+        thresholdFactor: Double
+    ): Boolean {
         if (endpoints.isEmpty()) return false
 
         val points = endpoints.flatMap { ep ->
@@ -235,7 +432,7 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         }
 
         val avgDistance = if (count == 0) 0.0 else total.toDouble() / count.toDouble()
-        return avgDistance >= (gridSize * 0.65)
+        return avgDistance >= (gridSize * thresholdFactor)
     }
 }
 
