@@ -5,9 +5,9 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.app.Dialog
-import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.media.SoundPool
+import android.os.Build
+import android.media.PlaybackParams
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -26,10 +26,10 @@ import com.magicgrid.data.StarManager
  */
 class WinDialogFragment : AppCompatDialogFragment() {
     companion object {
-        private const val STAR_STAGGER_MS = 1050L
-        private const val STAR_POP_DURATION_MS = 900L
-        private const val STAR_SFX_PRELOAD_FALLBACK_MS = 280L
-        private const val STAR_SFX_CLIP_MS = 280L
+        private const val STAR_STAGGER_MS = 920L
+        private const val STAR_POP_DURATION_MS = 780L
+        private const val STAR_SFX_START_OFFSET_MS = 180
+        private const val STAR_SFX_CLIP_MS = 300L
     }
 
     private var starsEarned = 0
@@ -37,13 +37,9 @@ class WinDialogFragment : AppCompatDialogFragment() {
     private var movesCount = 0
     private var onNextLevel: (() -> Unit)? = null
     private var onReplay: (() -> Unit)? = null
-    private var soundPool: SoundPool? = null
-    private var starSfxId = 0
-    private var starSfxLoaded = false
-    private var activeStreamId = 0
-    private val starRates = floatArrayOf(0.88f, 1.0f, 1.12f)
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val activeFallbackPlayers = mutableSetOf<MediaPlayer>()
+    private val starRates = floatArrayOf(0.88f, 1.0f, 1.12f)
+    private val activePlayers = mutableSetOf<MediaPlayer>()
 
     fun setData(stars: Int, time: Int, moves: Int): WinDialogFragment {
         starsEarned = stars.coerceIn(0, 3)
@@ -82,20 +78,7 @@ class WinDialogFragment : AppCompatDialogFragment() {
         statTime.text = StarManager().formatTime(timeSeconds)
         statMoves.text = movesCount.toString()
 
-        val stars = listOf(star1, star2, star3)
-        var animationStarted = false
-
-        fun startStarsOnce() {
-            if (animationStarted) return
-            animationStarted = true
-            animateStars(stars)
-        }
-
-        // Wait for SFX preload so each star pop can play right at animation start.
-        prepareStarSfx(onReady = ::startStarsOnce)
-        dialog.window?.decorView?.postDelayed({
-            startStarsOnce()
-        }, STAR_SFX_PRELOAD_FALLBACK_MS)
+        animateStars(listOf(star1, star2, star3))
 
         // Button handlers
         btnNext?.setOnClickListener {
@@ -136,14 +119,13 @@ class WinDialogFragment : AppCompatDialogFragment() {
                     duration = 280
                 }
 
+                star.postDelayed({
+                    playStarFillTone(index)
+                }, starDelayMs)
+
                 AnimatorSet().apply {
                     playTogether(scaleX, scaleY, alpha)
                     startDelay = starDelayMs
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationStart(animation: Animator) {
-                            playStarFillTone(index)
-                        }
-                    })
                     start()
                 }
 
@@ -162,59 +144,11 @@ class WinDialogFragment : AppCompatDialogFragment() {
         releaseStarSfx()
     }
 
-    private fun prepareStarSfx(onReady: () -> Unit) {
-        releaseStarSfx()
-
-        val context = context ?: return
-        var readyDispatched = false
-
-        fun dispatchReadyOnce() {
-            if (readyDispatched) return
-            readyDispatched = true
-            onReady()
-        }
-
-        val pool = SoundPool.Builder()
-            .setMaxStreams(4)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .build()
-
-        soundPool = pool
-        starSfxLoaded = false
-
-        pool.setOnLoadCompleteListener { _, sampleId, status ->
-            if (sampleId != starSfxId || status != 0) return@setOnLoadCompleteListener
-
-            starSfxLoaded = true
-            dispatchReadyOnce()
-        }
-
-        starSfxId = pool.load(context, R.raw.foxboytails_game_start_317318, 1)
-        if (starSfxId == 0) {
-            dispatchReadyOnce()
-        }
-    }
-
     private fun releaseStarSfx() {
-        if (activeStreamId != 0) {
-            soundPool?.stop(activeStreamId)
-            activeStreamId = 0
-        }
-
         mainHandler.removeCallbacksAndMessages(null)
 
-        soundPool?.release()
-        soundPool = null
-        starSfxLoaded = false
-        starSfxId = 0
-
-        synchronized(activeFallbackPlayers) {
-            activeFallbackPlayers.forEach { player ->
+        synchronized(activePlayers) {
+            activePlayers.forEach { player ->
                 runCatching {
                     if (player.isPlaying) {
                         player.stop()
@@ -222,80 +156,49 @@ class WinDialogFragment : AppCompatDialogFragment() {
                 }
                 player.release()
             }
-            activeFallbackPlayers.clear()
+            activePlayers.clear()
         }
     }
 
     private fun playStarFillTone(starIndex: Int) {
-        if (starSfxLoaded) {
-            playStarFillToneNow(starIndex)
-            return
-        }
-
-        playStarFillToneFallback(starIndex)
-    }
-
-    private fun playStarFillToneNow(starIndex: Int) {
-        val pool = soundPool ?: return
-        if (starSfxId == 0) return
-
-        if (activeStreamId != 0) {
-            pool.stop(activeStreamId)
-            activeStreamId = 0
-        }
-
-        val playbackRate = starRates[starIndex % starRates.size]
-        val streamId = pool.play(starSfxId, 1f, 1f, 1, 0, playbackRate)
-        if (streamId == 0) return
-
-        activeStreamId = streamId
-        mainHandler.postDelayed({
-            soundPool?.stop(streamId)
-            if (activeStreamId == streamId) {
-                activeStreamId = 0
-            }
-        }, STAR_SFX_CLIP_MS)
-    }
-
-    private fun playStarFillToneFallback(starIndex: Int) {
         val context = context ?: return
         val player = MediaPlayer.create(context, R.raw.foxboytails_game_start_317318) ?: return
 
-        synchronized(activeFallbackPlayers) {
-            activeFallbackPlayers.add(player)
+        synchronized(activePlayers) {
+            activePlayers.add(player)
         }
 
         player.setOnCompletionListener { mediaPlayer ->
-            releaseFallbackPlayer(mediaPlayer)
+            releasePlayer(mediaPlayer)
         }
 
         player.setOnErrorListener { mediaPlayer, _, _ ->
-            releaseFallbackPlayer(mediaPlayer)
+            releasePlayer(mediaPlayer)
             true
         }
 
-        val clipRunnable = Runnable {
-            runCatching {
-                if (player.isPlaying) {
-                    player.stop()
-                }
-            }
-            releaseFallbackPlayer(player)
-        }
-
         runCatching {
-            player.seekTo(0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val params = PlaybackParams()
+                params.speed = starRates[starIndex % starRates.size]
+                player.playbackParams = params
+            }
+
+            val safeOffset = STAR_SFX_START_OFFSET_MS.coerceAtMost((player.duration - 80).coerceAtLeast(0))
+            player.seekTo(safeOffset)
             player.start()
-            mainHandler.postDelayed(clipRunnable, STAR_SFX_CLIP_MS)
+
+            mainHandler.postDelayed({
+                releasePlayer(player)
+            }, STAR_SFX_CLIP_MS)
         }.onFailure {
-            mainHandler.removeCallbacks(clipRunnable)
-            releaseFallbackPlayer(player)
+            releasePlayer(player)
         }
     }
 
-    private fun releaseFallbackPlayer(player: MediaPlayer) {
-        synchronized(activeFallbackPlayers) {
-            if (!activeFallbackPlayers.remove(player)) {
+    private fun releasePlayer(player: MediaPlayer) {
+        synchronized(activePlayers) {
+            if (!activePlayers.remove(player)) {
                 return
             }
         }

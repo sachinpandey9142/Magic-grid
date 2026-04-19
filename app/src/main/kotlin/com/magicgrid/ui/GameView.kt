@@ -343,11 +343,11 @@ class GameView @JvmOverloads constructor(
         // Draw cells with paths
         drawCells(canvas)
 
-        // Draw endpoints
-        drawEndpoints(canvas)
-
         // Draw connecting lines/paths
         drawPaths(canvas)
+
+        // Draw endpoints on top so lines visually connect from underneath the dots.
+        drawEndpoints(canvas)
 
         // Draw hint guidance on top of paths
         drawHintOverlay(canvas)
@@ -526,13 +526,30 @@ class GameView @JvmOverloads constructor(
             
             // Adjust glow opacity based on path activity
             val isActivePath = (currentTouchColor == color && isPathActive)
+            val isCompletedPulse = (completedPathColor == color && completedPathAnimationTime > 0f)
+            val completionProgress =
+                (completedPathAnimationTime / COMPLETION_ANIMATION_DURATION).coerceIn(0f, 1f)
+            val completionPulse = if (isCompletedPulse) {
+                1f + 0.24f * kotlin.math.sin(completionProgress * kotlin.math.PI).toFloat()
+            } else {
+                1f
+            }
+
+            val outerStroke = if (isCompletedPulse) 24f * completionPulse else 20f
+            val mediumStroke = if (isCompletedPulse) 20f * completionPulse else 16f
+            val coreStroke = if (isCompletedPulse) 18f * completionPulse else 16f
             
             // Draw only the valid path segments (not crossed-out parts)
             // The path.cells list is maintained in order, so we draw all segments
             
             // LAYER 1: OUTER NEON AURA - Extra wide, very vibrant
+            outerGlowPaint.strokeWidth = outerStroke
             outerGlowPaint.color = glowColor
-            outerGlowPaint.alpha = if (isActivePath) 200 else 140  // Very bright
+            outerGlowPaint.alpha = when {
+                isCompletedPulse -> 230
+                isActivePath -> 200
+                else -> 140
+            }
             outerGlowPaint.setShadowLayer(18f, 0f, 0f, glowColor)  // Massive shadow glow
 
             for (i in 0 until path.cells.size - 1) {
@@ -548,8 +565,13 @@ class GameView @JvmOverloads constructor(
             }
 
             // LAYER 2: MEDIUM GLOW - Colorful bloom
+            glowPaint.strokeWidth = mediumStroke
             glowPaint.color = glowColor
-            glowPaint.alpha = if (isActivePath) 160 else 100  // Medium intensity
+            glowPaint.alpha = when {
+                isCompletedPulse -> 200
+                isActivePath -> 160
+                else -> 100
+            }
             glowPaint.setShadowLayer(10f, 0f, 0f, glowColor)
 
             for (i in 0 until path.cells.size - 1) {
@@ -565,8 +587,13 @@ class GameView @JvmOverloads constructor(
             }
 
             // LAYER 3: BRIGHT CORE - Thick neon line
+            pathPaint.strokeWidth = coreStroke
             pathPaint.color = color
-            pathPaint.alpha = if (isActivePath) 255 else 240  // Always bright
+            pathPaint.alpha = when {
+                isCompletedPulse -> 255
+                isActivePath -> 255
+                else -> 240
+            }
             pathPaint.setShadowLayer(6f, 0f, 0f, glowColor)
 
             for (i in 0 until path.cells.size - 1) {
@@ -585,6 +612,11 @@ class GameView @JvmOverloads constructor(
             pathPaint.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
             glowPaint.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
             outerGlowPaint.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+
+            // Restore defaults for next draw pass.
+            outerGlowPaint.strokeWidth = 20f
+            glowPaint.strokeWidth = 16f
+            pathPaint.strokeWidth = 16f
         }
     }
 
