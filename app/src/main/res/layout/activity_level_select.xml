@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:ignore="MergeRootFrame">
 
     <!-- COSMIC BACKGROUND -->
     <com.magicgrid.ui.CosmicBackgroundView
@@ -34,7 +36,7 @@
                     android:id="@+id/btn_back"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:text="←"
+                    android:text="@string/symbol_back"
                     android:textSize="24sp"
                     android:textColor="@color/primary"
                     android:background="@drawable/button_icon"
@@ -47,7 +49,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Difficulty Map"
+                    android:text="@string/difficulty_map_title"
                     android:textSize="24sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
@@ -104,7 +106,7 @@
                 <LinearLayout
                     android:id="@+id/difficulty_cards_container"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:paddingTop="4dp"
                     android:paddingBottom="6dp">

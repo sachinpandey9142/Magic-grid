@@ -1,5 +1,6 @@
 package com.magicgrid.ui
 
+import android.annotation.SuppressLint
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
@@ -223,6 +224,7 @@ class TwinkleTitleView @JvmOverloads constructor(
         paint.alpha = originalAlpha
     }
 
+    @SuppressLint("WrongCall")
     private fun drawStyledTitle(
         canvas: Canvas,
         innerStrokeColor: Int,

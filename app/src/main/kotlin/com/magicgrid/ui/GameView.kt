@@ -2,6 +2,9 @@ package com.magicgrid.ui
 
 import android.content.Context
 import android.graphics.*
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -134,6 +137,11 @@ class GameView @JvmOverloads constructor(
     private var hintOverlay: HintOverlay? = null
     private var hintOverlayRemainingTime = 0f
     private val HINT_OVERLAY_DURATION = 2200f
+    private var pathToneGenerator: ToneGenerator? = null
+    private var pathCompleteToneGenerator: ToneGenerator? = null
+    private var pendingPathCompleteTailTone: Runnable? = null
+    private var lastConnectToneAtMs = 0L
+    private val CONNECT_TONE_MIN_INTERVAL_MS = 42L
 
     private val hintGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -176,6 +184,7 @@ class GameView @JvmOverloads constructor(
             override fun onPathCompleted(color: Int) {
                 // Trigger completion animation when path is locked
                 triggerCompletionAnimation(color)
+                playPathCompleteTone()
             }
         })
         postInvalidateOnAnimation()
@@ -740,11 +749,33 @@ class GameView @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 return handleTouchMove(event.x, event.y)
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
+                val handled = handleTouchUp()
+                if (handled) {
+                    performClick()
+                }
+                return handled
+            }
+            MotionEvent.ACTION_CANCEL -> {
                 return handleTouchUp()
             }
         }
         return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        pendingPathCompleteTailTone?.let { removeCallbacks(it) }
+        pendingPathCompleteTailTone = null
+        pathToneGenerator?.release()
+        pathToneGenerator = null
+        pathCompleteToneGenerator?.release()
+        pathCompleteToneGenerator = null
     }
 
     /**
@@ -785,6 +816,9 @@ class GameView @JvmOverloads constructor(
         // Start or continue the path from this point (endpoint or any path cell)
         isPathActive = gameManager.onCellSelected(touchedColor, row, col)
         triggerHaptic(isPathActive)
+        if (isPathActive) {
+            playConnectTone()
+        }
         postInvalidateOnAnimation()
         return true
     }
@@ -836,12 +870,49 @@ class GameView @JvmOverloads constructor(
         
         if (processedAny) {
             triggerHaptic(true)
+            playConnectTone()
             postInvalidateOnAnimation()
         } else if (attemptedAny) {
             triggerHaptic(false)
         }
         
         return true
+    }
+
+    private fun playConnectTone() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastConnectToneAtMs < CONNECT_TONE_MIN_INTERVAL_MS) {
+            return
+        }
+
+        lastConnectToneAtMs = now
+
+        if (pathToneGenerator == null) {
+            pathToneGenerator = runCatching {
+                ToneGenerator(AudioManager.STREAM_MUSIC, 55)
+            }.getOrNull()
+        }
+
+        pathToneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP2, 28)
+    }
+
+    private fun playPathCompleteTone() {
+        if (pathCompleteToneGenerator == null) {
+            pathCompleteToneGenerator = runCatching {
+                ToneGenerator(AudioManager.STREAM_MUSIC, 85)
+            }.getOrNull()
+        }
+
+        val generator = pathCompleteToneGenerator ?: return
+        pendingPathCompleteTailTone?.let { removeCallbacks(it) }
+
+        // Two-part chime so dot-to-dot completion sounds distinct and satisfying.
+        generator.startTone(ToneGenerator.TONE_PROP_ACK, 120)
+        val tailTone = Runnable {
+            pathCompleteToneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 145)
+        }
+        pendingPathCompleteTailTone = tailTone
+        postDelayed(tailTone, 120L)
     }
 
     /**

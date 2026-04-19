@@ -123,7 +123,7 @@ class CosmicBackgroundView @JvmOverloads constructor(
         if (totalParticles < 2) return  // Need at least 2 particles
         
         // Select 2-4 random particles to sparkle
-        val sparkleCount = sparkleRandom.nextInt(2, 5)  // 2-4 particles
+        val sparkleCount = 2 + sparkleRandom.nextInt(3)  // 2-4 particles
         repeat(sparkleCount) {
             val randomParticleIndex = sparkleRandom.nextInt(totalParticles)
             

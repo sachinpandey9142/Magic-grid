@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:minHeight="164dp"
@@ -19,9 +20,9 @@
             android:id="@+id/card_icon"
             android:layout_width="22dp"
             android:layout_height="22dp"
-            android:contentDescription=""
+            android:contentDescription="@null"
             android:src="@drawable/ic_play"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <TextView
             android:id="@+id/card_state"
@@ -33,9 +34,9 @@
             android:paddingTop="3dp"
             android:paddingEnd="8dp"
             android:paddingBottom="3dp"
-            android:text="Locked"
+            android:text="@string/difficulty_card_state_locked"
             android:textColor="@color/white"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <Space
@@ -47,7 +48,7 @@
             android:id="@+id/card_action"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Open"
+            android:text="@string/difficulty_card_action_open"
             android:textColor="@color/white_90"
             android:textSize="12sp"
             android:textStyle="bold" />
@@ -59,7 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="Easy Beginner"
+        android:text="@string/difficulty_easy_title"
         android:textColor="@color/white"
         android:textSize="24sp"
         android:textStyle="bold" />
@@ -69,7 +70,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Starter journey"
+        android:text="@string/difficulty_easy_subtitle"
         android:textColor="@color/white_90"
         android:textSize="13sp" />
 
@@ -90,7 +91,7 @@
             android:paddingTop="6dp"
             android:paddingEnd="8dp"
             android:paddingBottom="6dp"
-            android:text="50 levels"
+            android:text="@string/difficulty_card_levels_placeholder"
             android:textColor="@color/white"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -110,7 +111,7 @@
             android:paddingTop="6dp"
             android:paddingEnd="8dp"
             android:paddingBottom="6dp"
-            android:text="0 done"
+            android:text="@string/difficulty_card_progress_placeholder"
             android:textColor="@color/white"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -130,7 +131,7 @@
             android:paddingTop="6dp"
             android:paddingEnd="8dp"
             android:paddingBottom="6dp"
-            android:text="0 stars"
+            android:text="@string/difficulty_card_stars_placeholder"
             android:textColor="@color/white"
             android:textSize="11sp"
             android:textStyle="bold" />

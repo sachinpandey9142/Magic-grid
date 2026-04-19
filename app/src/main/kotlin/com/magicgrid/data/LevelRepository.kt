@@ -176,10 +176,10 @@ object LevelRepository {
     }
 
     fun getDifficultyRange(difficulty: String): IntRange? {
-        return when (difficulty.lowercase()) {
-            "easy" -> 1..EASY_LEVEL_COUNT
-            "medium" -> (EASY_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT)
-            "hard" -> (EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + HARD_LEVEL_COUNT)
+        return when {
+            difficulty.equals("easy", ignoreCase = true) -> 1..EASY_LEVEL_COUNT
+            difficulty.equals("medium", ignoreCase = true) -> (EASY_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT)
+            difficulty.equals("hard", ignoreCase = true) -> (EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + 1)..(EASY_LEVEL_COUNT + MEDIUM_LEVEL_COUNT + HARD_LEVEL_COUNT)
             else -> null
         }
     }

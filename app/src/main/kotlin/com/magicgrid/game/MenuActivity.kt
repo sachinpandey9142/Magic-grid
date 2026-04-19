@@ -190,8 +190,14 @@ class MenuActivity : AppCompatActivity() {
     private fun playFinalSettleFeedback() {
         dotBounceSoundPlayer?.playSettle()
 
-        val handled = appTitle.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        if (!handled) {
+        val primaryFeedback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            HapticFeedbackConstants.CONFIRM
+        } else {
+            HapticFeedbackConstants.LONG_PRESS
+        }
+
+        val handled = appTitle.performHapticFeedback(primaryFeedback)
+        if (!handled && primaryFeedback != HapticFeedbackConstants.LONG_PRESS) {
             appTitle.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         }
     }

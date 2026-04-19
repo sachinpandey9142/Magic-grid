@@ -243,18 +243,30 @@ class LevelSelectActivity : AppCompatActivity() {
                         .scaleY(0.985f)
                         .setDuration(80)
                         .start()
+                    true
                 }
 
-                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_UP -> {
+                    target.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(120)
+                        .start()
+                    target.performClick()
+                    true
+                }
+
                 MotionEvent.ACTION_CANCEL -> {
                     target.animate()
                         .scaleX(1f)
                         .scaleY(1f)
                         .setDuration(120)
                         .start()
+                    true
                 }
+
+                else -> false
             }
-            false
         }
     }
 

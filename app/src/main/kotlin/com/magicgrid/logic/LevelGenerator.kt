@@ -79,14 +79,19 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     }
 
     private fun pickColorCount(difficulty: String): Int {
-        val range = when (difficulty.lowercase()) {
-            "easy" -> 2..3
-            "medium" -> 3..4
-            "hard" -> 4..5
+        val range = when {
+            difficulty.equals("easy", ignoreCase = true) -> 2..3
+            difficulty.equals("medium", ignoreCase = true) -> 3..4
+            difficulty.equals("hard", ignoreCase = true) -> 4..5
             else -> 3..4
         }
 
-        return random.nextInt(range.first, range.last + 1)
+        return nextIntInclusive(range.first, range.last)
+    }
+
+    private fun nextIntInclusive(min: Int, max: Int): Int {
+        if (max <= min) return min
+        return min + random.nextInt(max - min + 1)
     }
 
     private fun buildGuaranteedEndpoints(
@@ -99,7 +104,7 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         val transformed = applyTransform(
             snake,
             gridSize,
-            transformId ?: random.nextInt(0, 8)
+            transformId ?: random.nextInt(8)
         )
 
         val minSegmentLength = maxOf(3, gridSize - 1)
@@ -196,7 +201,7 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
                 high = maxForCurrent
             }
 
-            val current = random.nextInt(low, high + 1)
+            val current = nextIntInclusive(low, high)
             segments[index] = current
             remaining -= current
         }

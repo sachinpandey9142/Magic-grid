@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.Space
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
@@ -231,13 +232,13 @@ class DifficultyLevelsActivity : AppCompatActivity() {
                 marginEnd = dp(18)
             }
 
-            background = getDrawable(
-                if (rowIndex % 2 == 0) {
-                    R.drawable.level_map_connector_right
-                } else {
-                    R.drawable.level_map_connector_left
-                }
-            )
+            val connectorRes = if (rowIndex % 2 == 0) {
+                R.drawable.level_map_connector_right
+            } else {
+                R.drawable.level_map_connector_left
+            }
+
+            background = AppCompatResources.getDrawable(this@DifficultyLevelsActivity, connectorRes)
             alpha = 0.7f
         }
     }
