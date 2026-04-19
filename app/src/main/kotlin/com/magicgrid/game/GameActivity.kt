@@ -12,7 +12,9 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.ads.AdView
 import com.magicgrid.R
+import com.magicgrid.ads.AdController
 import com.magicgrid.controller.GameManager
 import com.magicgrid.data.LevelRepository
 import com.magicgrid.data.ProgressManager
@@ -57,6 +59,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private lateinit var backButton: Button
     private lateinit var topBackButton: Button
     private lateinit var pauseButton: Button
+    private var gameBannerAd: AdView? = null
     
     // Game state
     private var levelId = 1
@@ -132,6 +135,12 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         backButton = findViewById(R.id.btn_menu)
         topBackButton = findViewById(R.id.btn_back_top)
         pauseButton = findViewById(R.id.btn_pause)
+        gameBannerAd = findViewById(R.id.game_banner_ad)
+
+        AdController.initialize(this)
+        AdController.preloadInterstitial(applicationContext)
+        AdController.preloadRewarded(applicationContext)
+        gameBannerAd?.let { AdController.loadBanner(it) }
 
         // Restore state after process death / configuration change.
         hintsUsed = savedInstanceState?.getInt(KEY_HINTS_USED, 0) ?: 0
@@ -598,7 +607,6 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         val hintsLeftAfterBuy = ((currentCoins - HINT_COIN_COST).coerceAtLeast(0) / HINT_COIN_COST)
         val projectedHintsUsed = hintsUsed + 1
         val projectedTier = calculateProjectedStarTierAfterHintPurchase()
-        val missingCoins = (HINT_COIN_COST - currentCoins).coerceAtLeast(0)
         val isInsufficient = highlightInsufficient || currentCoins < HINT_COIN_COST
 
         costValue.text = getString(R.string.hint_dialog_cost_value_format, HINT_COIN_COST)
@@ -607,10 +615,10 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         hintsAfterBuyValue.text = getString(R.string.hint_dialog_hints_after_buy_value_format, hintsLeftAfterBuy)
         hintsUsedValue.text = getString(R.string.hint_dialog_hints_used_value_format, projectedHintsUsed)
         if (isInsufficient) {
-            starAfterValue.text = getString(R.string.hint_dialog_need_more_value_format, missingCoins)
-            starAfterValue.setTextColor(getColor(R.color.accent_warm))
-            buyButton.text = getString(R.string.hint_dialog_not_enough_button)
-            cancelButton.text = getString(R.string.hint_dialog_close_button)
+            starAfterValue.text = getString(R.string.hint_dialog_watch_ad_value)
+            starAfterValue.setTextColor(getColor(R.color.level_completed))
+            buyButton.text = getString(R.string.hint_dialog_watch_ad_button)
+            cancelButton.text = getString(R.string.dialog_cancel)
         } else {
             starAfterValue.text = getString(
                 R.string.hint_dialog_star_after_value_format,
@@ -636,12 +644,11 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         buyButton.setOnClickListener {
             provideControlFeedback(buyButton)
             dialog.dismiss()
-            purchaseHint()
-        }
-
-        if (isInsufficient) {
-            buyButton.isEnabled = false
-            buyButton.alpha = 0.6f
+            if (isInsufficient) {
+                watchAdForHint()
+            } else {
+                purchaseHint()
+            }
         }
 
         dialog.setOnShowListener {
@@ -735,6 +742,34 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         showHint(hintSuggestion)
     }
 
+    private fun watchAdForHint() {
+        val shown = AdController.showRewardedVideo(
+            activity = this,
+            onReward = {
+                val hintSuggestion = findHintSuggestion()
+                if (hintSuggestion == null) {
+                    showToast(getString(R.string.hint_no_move_available))
+                    return@showRewardedVideo
+                }
+
+                provideControlFeedback(hintButton)
+                hintsUsed++
+                progressManager.incrementHintsUsed(levelId)
+                updateCoinDisplay()
+                updateLiveStarHud(animated = true)
+                showHint(hintSuggestion)
+                showToast(getString(R.string.hint_rewarded_granted))
+            },
+            onFinished = {
+                AdController.preloadRewarded(applicationContext)
+            }
+        )
+
+        if (!shown) {
+            showToast(getString(R.string.store_ad_not_ready))
+        }
+    }
+
     /**
      * Called when game state changes
      */
@@ -762,12 +797,59 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         progressManager.setCurrentLevel(nextLevelId)
         updateCoinDisplay()
 
+        val completedLevelsCount = progressManager.getCompletedLevels().size
+        val shouldShowMilestoneVideoAd = progressManager.consumeVideoAdMilestoneTrigger(completedLevelsCount)
+        val shouldShowFirstLevelInterstitial = progressManager.consumeFirstLevelInterstitialTrigger(levelId)
+
         if (coinsEarned > 0) {
             showToast(getString(R.string.coins_earned_format, coinsEarned))
         }
-        
-        // Show win dialog with stars
-        showWinDialog(starsEarned, state.elapsedTimeSeconds, state.moveCount)
+
+        showWinDialogAfterAds(
+            stars = starsEarned,
+            timeSeconds = state.elapsedTimeSeconds,
+            moves = state.moveCount,
+            showMilestoneVideoAd = shouldShowMilestoneVideoAd,
+            showFirstLevelInterstitial = shouldShowFirstLevelInterstitial
+        )
+    }
+
+    private fun showWinDialogAfterAds(
+        stars: Int,
+        timeSeconds: Int,
+        moves: Int,
+        showMilestoneVideoAd: Boolean,
+        showFirstLevelInterstitial: Boolean
+    ) {
+        val showDialog = {
+            showWinDialog(stars, timeSeconds, moves)
+        }
+
+        if (showMilestoneVideoAd) {
+            AdController.showRewardedVideo(
+                activity = this,
+                onReward = {},
+                onFinished = {
+                    if (showFirstLevelInterstitial) {
+                        AdController.showInterstitial(this) {
+                            showDialog()
+                        }
+                    } else {
+                        showDialog()
+                    }
+                }
+            )
+            return
+        }
+
+        if (showFirstLevelInterstitial) {
+            AdController.showInterstitial(this) {
+                showDialog()
+            }
+            return
+        }
+
+        showDialog()
     }
 
     /**
@@ -892,10 +974,17 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     override fun onPause() {
+        gameBannerAd?.pause()
         super.onPause()
         if (!isFinishing && !gameManager.isGameWon() && !isPaused) {
             pauseGame(showMessage = false)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gameBannerAd?.resume()
+        updateCoinDisplay()
     }
 
     private fun showToast(message: String) {
@@ -903,6 +992,8 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     override fun onDestroy() {
+        gameBannerAd?.destroy()
+        gameBannerAd = null
         super.onDestroy()
         stopTimerLoop()
     }

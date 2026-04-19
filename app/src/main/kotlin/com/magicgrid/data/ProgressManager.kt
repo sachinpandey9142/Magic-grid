@@ -20,6 +20,8 @@ class ProgressManager(context: Context) {
         private const val LEVEL_HINTS_KEY = "level_hints"
         private const val COINS_BALANCE_KEY = "coins_balance"
         private const val LEVEL_COIN_REWARD_KEY = "level_coin_reward"
+        private const val FIRST_LEVEL_INTERSTITIAL_SHOWN_KEY = "first_level_interstitial_shown"
+        private const val LAST_VIDEO_AD_MILESTONE_KEY = "last_video_ad_milestone"
         private const val DEFAULT_STARTING_COINS = 100
         private const val COINS_PER_STAR = 15
     }
@@ -198,6 +200,33 @@ class ProgressManager(context: Context) {
         saveMap(LEVEL_COIN_REWARD_KEY, rewardMap)
 
         return coinReward
+    }
+
+    /**
+     * Returns true once when level 1 is completed for the first time, then false forever.
+     */
+    fun consumeFirstLevelInterstitialTrigger(levelId: Int): Boolean {
+        if (levelId != 1) return false
+
+        val alreadyShown = sharedPreferences.getBoolean(FIRST_LEVEL_INTERSTITIAL_SHOWN_KEY, false)
+        if (alreadyShown) return false
+
+        sharedPreferences.edit().putBoolean(FIRST_LEVEL_INTERSTITIAL_SHOWN_KEY, true).apply()
+        return true
+    }
+
+    /**
+     * Returns true once per completion milestone (3, 6, 9...) and never repeats the same milestone.
+     */
+    fun consumeVideoAdMilestoneTrigger(completedLevelsCount: Int): Boolean {
+        if (completedLevelsCount < 3 || completedLevelsCount % 3 != 0) return false
+
+        val milestone = completedLevelsCount / 3
+        val lastShownMilestone = sharedPreferences.getInt(LAST_VIDEO_AD_MILESTONE_KEY, 0)
+        if (milestone <= lastShownMilestone) return false
+
+        sharedPreferences.edit().putInt(LAST_VIDEO_AD_MILESTONE_KEY, milestone).apply()
+        return true
     }
 
     /**

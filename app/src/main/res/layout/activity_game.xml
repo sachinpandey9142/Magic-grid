@@ -377,7 +377,8 @@
             android:background="@drawable/background_glass"
             android:elevation="8dp"
             android:layout_margin="12dp"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -493,6 +494,16 @@
             </LinearLayout>
 
         </FrameLayout>
+
+        <com.google.android.gms.ads.AdView
+            android:id="@+id/game_banner_ad"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="10dp"
+            app:adSize="BANNER"
+            app:adUnitId="@string/admob_banner_unit_id" />
 
     </LinearLayout>
 

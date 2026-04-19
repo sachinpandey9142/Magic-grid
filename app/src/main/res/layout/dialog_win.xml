@@ -4,183 +4,222 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC000000"
+    android:background="#CC040712"
     tools:ignore="Overdraw">
 
-    <!-- Confetti particles container (for animation) -->
     <FrameLayout
         android:id="@+id/confetti_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Content card with premium glass effect -->
     <FrameLayout
-        android:layout_width="320dp"
+        android:layout_width="340dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:background="@drawable/background_card"
-        android:elevation="16dp">
+        android:elevation="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="32dp">
+            android:paddingStart="24dp"
+            android:paddingTop="26dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="24dp">
 
-            <!-- Title -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/win_dialog_title"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
                 android:textAlignment="center"
-                android:layout_marginBottom="24dp" />
+                android:textColor="@color/text_primary"
+                android:textSize="30sp"
+                android:textStyle="bold" />
 
-            <!-- Stars display (animated) -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="18dp"
+                android:text="@string/win_dialog_subtitle"
+                android:textAlignment="center"
+                android:textColor="@color/white_90"
+                android:textSize="13sp" />
+
             <LinearLayout
                 android:id="@+id/stars_container"
                 android:layout_width="match_parent"
-                android:layout_height="80dp"
+                android:layout_height="88dp"
+                android:layout_marginBottom="18dp"
                 android:gravity="center"
-                android:orientation="horizontal"
-                android:layout_marginBottom="32dp">
+                android:orientation="horizontal">
 
-                <ImageView
-                    android:id="@+id/star_1"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_star"
-                    android:scaleType="fitCenter"
-                    app:tint="@color/level_locked"
-                    android:layout_marginEnd="8dp"
-                    android:alpha="0.5" />
+                <FrameLayout
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/win_star_shell"
+                    android:foregroundGravity="center">
 
-                <ImageView
-                    android:id="@+id/star_2"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_star"
-                    android:scaleType="fitCenter"
-                    app:tint="@color/level_locked"
-                    android:layout_marginEnd="8dp"
-                    android:alpha="0.5" />
+                    <ImageView
+                        android:id="@+id/star_1"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.5"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_star"
+                        app:tint="@color/level_locked" />
 
-                <ImageView
-                    android:id="@+id/star_3"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_star"
-                    android:scaleType="fitCenter"
-                    app:tint="@color/level_locked"
-                    android:alpha="0.5" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/win_star_shell"
+                    android:foregroundGravity="center">
+
+                    <ImageView
+                        android:id="@+id/star_2"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.5"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_star"
+                        app:tint="@color/level_locked" />
+
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:background="@drawable/win_star_shell"
+                    android:foregroundGravity="center">
+
+                    <ImageView
+                        android:id="@+id/star_3"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.5"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_star"
+                        app:tint="@color/level_locked" />
+
+                </FrameLayout>
 
             </LinearLayout>
 
-            <!-- Stats Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
                 android:background="@drawable/background_glass"
-                android:padding="16dp"
-                android:layout_marginBottom="24dp"
-                android:orientation="vertical">
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
-                    <!-- Time stat -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="12dp">
+                        android:text="@string/win_time_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/win_time_label"
-                            android:textSize="14sp"
-                            android:textColor="@color/text_secondary" />
-
-                        <TextView
-                            android:id="@+id/stat_time"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/timer_default"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/secondary" />
-
-                    </LinearLayout>
-
-                    <!-- Moves stat -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/stat_time"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:layout_marginTop="4dp"
+                        android:text="@string/timer_default"
+                        android:textColor="@color/secondary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/win_moves_label"
-                            android:textSize="14sp"
-                            android:textColor="@color/text_secondary" />
+                </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/stat_moves"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/value_zero"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/secondary" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="40dp"
+                    android:background="@color/divider" />
 
-                    </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/win_moves_label"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/stat_moves"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/value_zero"
+                        android:textColor="@color/secondary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
-            <!-- Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:gravity="center"
+                android:orientation="horizontal"
                 tools:ignore="ButtonStyle">
 
-                <!-- Next Level Button -->
-                <Button
-                    android:id="@+id/btn_next"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="@string/next_level"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/white"
-                    android:background="@drawable/button_primary"
-                    android:elevation="4dp"
-                    android:stateListAnimator="@animator/button_animator" />
-
-                <!-- Replay Button -->
                 <Button
                     android:id="@+id/btn_replay"
                     android:layout_width="0dp"
                     android:layout_height="56dp"
                     android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/button_win_replay"
+                    android:elevation="4dp"
+                    android:stateListAnimator="@animator/button_animator"
                     android:text="@string/replay"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
                     android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:background="@drawable/button_outline"
-                    android:elevation="2dp"
-                    android:stateListAnimator="@animator/button_animator" />
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btn_next"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/button_menu_primary_modern"
+                    android:elevation="5dp"
+                    android:stateListAnimator="@animator/button_animator"
+                    android:text="@string/next_level"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
             </LinearLayout>
 

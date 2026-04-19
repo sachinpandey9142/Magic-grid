@@ -13,7 +13,9 @@ import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
 import android.widget.TextView
+import com.google.android.gms.ads.AdView
 import com.magicgrid.R
+import com.magicgrid.ads.AdController
 import com.magicgrid.data.ProgressManager
 import com.magicgrid.ui.TwinkleTitleView
 import kotlin.math.PI
@@ -28,6 +30,7 @@ class MenuActivity : AppCompatActivity() {
     private lateinit var continueStatusText: TextView
     private lateinit var coinStatusText: TextView
     private lateinit var appTitle: TwinkleTitleView
+    private var menuBannerAd: AdView? = null
     private var dotBounceSoundPlayer: DotBounceSoundPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,13 +41,24 @@ class MenuActivity : AppCompatActivity() {
 
         val playButton = findViewById<Button>(R.id.btn_play)
         val levelsButton = findViewById<Button>(R.id.btn_levels)
+        val storeButton = findViewById<Button>(R.id.btn_store)
         val settingsButton = findViewById<Button>(R.id.btn_settings)
         val exitButton = findViewById<Button>(R.id.btn_exit)
         continueStatusText = findViewById(R.id.menu_continue_text)
         coinStatusText = findViewById(R.id.menu_coin_text)
         appTitle = findViewById(R.id.app_title)
+        menuBannerAd = findViewById(R.id.menu_banner_ad)
 
         dotBounceSoundPlayer = DotBounceSoundPlayer()
+
+        AdController.initialize(this)
+        AdController.preloadInterstitial(applicationContext)
+        AdController.preloadRewarded(applicationContext)
+        menuBannerAd?.let { AdController.loadBanner(it) }
+
+        window.decorView.post {
+            AdController.showLaunchInterstitialIfNeeded(this)
+        }
 
         appTitle.setOnDotImpactListener { event ->
             playDotImpactSound(event.dotIndex, event.impactIndex)
@@ -62,6 +76,7 @@ class MenuActivity : AppCompatActivity() {
             coinStatusText,
             playButton,
             levelsButton,
+            storeButton,
             settingsButton,
             exitButton
         )
@@ -85,6 +100,11 @@ class MenuActivity : AppCompatActivity() {
             startActivity(Intent(this, LevelSelectActivity::class.java))
         }
 
+        storeButton.setOnClickListener {
+            playTapFeedback(storeButton)
+            startActivity(Intent(this, StoreActivity::class.java))
+        }
+
         settingsButton.setOnClickListener {
             playTapFeedback(settingsButton)
             // Settings screen (can be implemented later)
@@ -99,13 +119,21 @@ class MenuActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         appTitle.setOnDotImpactListener(null)
+        menuBannerAd?.destroy()
+        menuBannerAd = null
         dotBounceSoundPlayer?.release()
         dotBounceSoundPlayer = null
         super.onDestroy()
     }
 
+    override fun onPause() {
+        menuBannerAd?.pause()
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        menuBannerAd?.resume()
         updateContinueStatus()
     }
 

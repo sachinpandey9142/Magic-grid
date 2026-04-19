@@ -5,7 +5,8 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.app.Dialog
-import android.media.MediaPlayer
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Bundle
 import android.view.animation.OvershootInterpolator
 import android.widget.Button
@@ -21,13 +22,21 @@ import com.magicgrid.data.StarManager
  * Displays stars, stats, and provides next/replay options
  */
 class WinDialogFragment : AppCompatDialogFragment() {
+    companion object {
+        private const val STAR_STAGGER_MS = 520L
+        private const val STAR_POP_DURATION_MS = 560L
+    }
+
     private var starsEarned = 0
     private var timeSeconds = 0
     private var movesCount = 0
     private var onNextLevel: (() -> Unit)? = null
     private var onReplay: (() -> Unit)? = null
-    private val activeSfxPlayers = mutableSetOf<MediaPlayer>()
-    private val preloadedStarPlayers = ArrayDeque<MediaPlayer>()
+    private var soundPool: SoundPool? = null
+    private var starSfxId = 0
+    private var starSfxLoaded = false
+    private val pendingSfxIndexes = ArrayDeque<Int>()
+    private val starRates = floatArrayOf(0.96f, 1.0f, 1.04f)
 
     fun setData(stars: Int, time: Int, moves: Int): WinDialogFragment {
         starsEarned = stars.coerceIn(0, 3)
@@ -66,8 +75,7 @@ class WinDialogFragment : AppCompatDialogFragment() {
         statTime.text = StarManager().formatTime(timeSeconds)
         statMoves.text = movesCount.toString()
 
-        // Preload short-lived players so each star pop starts with minimal latency.
-        preloadStarSfx(starsEarned)
+        prepareStarSfx()
 
         // Animate stars one by one
         animateStars(listOf(star1, star2, star3))
@@ -90,7 +98,7 @@ class WinDialogFragment : AppCompatDialogFragment() {
     private fun animateStars(stars: List<ImageView>) {
         stars.forEachIndexed { index, star ->
             if (index < starsEarned) {
-                val starDelayMs = (index * 200).toLong()
+                val starDelayMs = index * STAR_STAGGER_MS
 
                 // Earn this star - animate it
                 star.alpha = 0f
@@ -98,19 +106,19 @@ class WinDialogFragment : AppCompatDialogFragment() {
                 star.scaleY = 0f
 
                 val scaleX = ObjectAnimator.ofFloat(star, "scaleX", 0f, 1.2f, 1f).apply {
-                    duration = 450
+                    duration = STAR_POP_DURATION_MS
                     startDelay = starDelayMs
                     interpolator = OvershootInterpolator(1.5f)
                 }
 
                 val scaleY = ObjectAnimator.ofFloat(star, "scaleY", 0f, 1.2f, 1f).apply {
-                    duration = 450
+                    duration = STAR_POP_DURATION_MS
                     startDelay = starDelayMs
                     interpolator = OvershootInterpolator(1.5f)
                 }
 
                 val alpha = ObjectAnimator.ofFloat(star, "alpha", 0f, 1f).apply {
-                    duration = 200
+                    duration = 280
                     startDelay = starDelayMs
                 }
 
@@ -118,7 +126,7 @@ class WinDialogFragment : AppCompatDialogFragment() {
                     playTogether(scaleX, scaleY, alpha)
                     addListener(object : AnimatorListenerAdapter() {
                         override fun onAnimationStart(animation: Animator) {
-                            playStarFillTone()
+                            playStarFillTone(index)
                         }
                     })
                     start()
@@ -136,53 +144,61 @@ class WinDialogFragment : AppCompatDialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        activeSfxPlayers.forEach { it.release() }
-        activeSfxPlayers.clear()
-        releasePreloadedStarSfx()
+        releaseStarSfx()
     }
 
-    private fun preloadStarSfx(count: Int) {
-        releasePreloadedStarSfx()
+    private fun prepareStarSfx() {
+        releaseStarSfx()
 
         val context = context ?: return
-        repeat(count) {
-            MediaPlayer.create(context, R.raw.foxboytails_game_start_317318)?.let { player ->
-                player.isLooping = false
-                preloadedStarPlayers.addLast(player)
+        val pool = SoundPool.Builder()
+            .setMaxStreams(4)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+
+        soundPool = pool
+        starSfxLoaded = false
+        pendingSfxIndexes.clear()
+
+        pool.setOnLoadCompleteListener { _, sampleId, status ->
+            if (sampleId != starSfxId || status != 0) return@setOnLoadCompleteListener
+
+            starSfxLoaded = true
+            while (pendingSfxIndexes.isNotEmpty()) {
+                playStarFillToneNow(pendingSfxIndexes.removeFirst())
             }
         }
+
+        starSfxId = pool.load(context, R.raw.foxboytails_game_start_317318, 1)
     }
 
-    private fun releasePreloadedStarSfx() {
-        preloadedStarPlayers.forEach { it.release() }
-        preloadedStarPlayers.clear()
+    private fun releaseStarSfx() {
+        soundPool?.release()
+        soundPool = null
+        starSfxLoaded = false
+        starSfxId = 0
+        pendingSfxIndexes.clear()
     }
 
-    private fun playStarFillTone() {
-        val context = context ?: return
-        val player = preloadedStarPlayers.removeFirstOrNull()
-            ?: MediaPlayer.create(context, R.raw.foxboytails_game_start_317318)
-            ?: return
-
-        activeSfxPlayers.add(player)
-
-        player.setOnCompletionListener { mediaPlayer ->
-            activeSfxPlayers.remove(mediaPlayer)
-            mediaPlayer.release()
+    private fun playStarFillTone(starIndex: Int) {
+        if (starSfxLoaded) {
+            playStarFillToneNow(starIndex)
+            return
         }
 
-        player.setOnErrorListener { mediaPlayer, _, _ ->
-            activeSfxPlayers.remove(mediaPlayer)
-            mediaPlayer.release()
-            true
-        }
+        pendingSfxIndexes.addLast(starIndex)
+    }
 
-        runCatching {
-            player.seekTo(0)
-            player.start()
-        }.onFailure {
-            activeSfxPlayers.remove(player)
-            player.release()
-        }
+    private fun playStarFillToneNow(starIndex: Int) {
+        val pool = soundPool ?: return
+        if (starSfxId == 0) return
+
+        val playbackRate = starRates[starIndex % starRates.size]
+        pool.play(starSfxId, 1f, 1f, 1, 0, playbackRate)
     }
 }
