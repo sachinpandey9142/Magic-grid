@@ -11,6 +11,8 @@ class ProgressManager(context: Context) {
         context.getSharedPreferences("MagicGridProgress", Context.MODE_PRIVATE)
 
     companion object {
+        // Testing override: set to false before shipping.
+        private const val FORCE_UNLOCK_ALL_LEVELS = true
         private const val COMPLETED_LEVELS_KEY = "completed_levels"
         private const val CURRENT_LEVEL_KEY = "current_level"
         private const val HIGHEST_UNLOCKED_LEVEL_KEY = "highest_unlocked_level"
@@ -85,6 +87,10 @@ class ProgressManager(context: Context) {
 
     fun getHighestUnlockedLevel(): Int {
         val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
+        if (FORCE_UNLOCK_ALL_LEVELS) {
+            return totalLevels
+        }
+
         val stored = sharedPreferences
             .getInt(HIGHEST_UNLOCKED_LEVEL_KEY, 1)
             .coerceIn(1, totalLevels)
@@ -104,6 +110,11 @@ class ProgressManager(context: Context) {
     }
 
     fun isLevelUnlocked(levelId: Int): Boolean {
+        if (FORCE_UNLOCK_ALL_LEVELS) {
+            val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
+            return levelId in 1..totalLevels
+        }
+
         if (levelId <= 1) return true
         return levelId <= getHighestUnlockedLevel()
     }
