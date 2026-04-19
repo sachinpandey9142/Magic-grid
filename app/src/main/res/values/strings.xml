@@ -92,9 +92,9 @@
     <string name="game_all_levels_complete_toast">Congratulations! You completed all levels!</string>
     <string name="game_paused">Paused</string>
     <string name="game_resumed">Resumed</string>
-    <string name="star_target_three_format">No hint + &lt;= %1$s</string>
-    <string name="star_target_two_format">Hint OR &gt; %1$s</string>
-    <string name="star_target_one_format">Hint + &gt; %1$s</string>
+    <string name="star_target_three_format">No hint + finish in %1$s</string>
+    <string name="star_target_two_format">Finish in %1$s</string>
+    <string name="star_target_one_format">Complete level</string>
     <string name="star_target_badge_three">3★</string>
     <string name="star_target_badge_two">2★</string>
     <string name="star_target_badge_one">1★</string>

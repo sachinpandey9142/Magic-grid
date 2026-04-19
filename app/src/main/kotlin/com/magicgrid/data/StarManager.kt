@@ -4,10 +4,15 @@ package com.magicgrid.data
  * Manages 3-star rating system for levels
  * Stars are awarded based on:
  * 1. Completion (always 1 star)
- * 2. Time-based achievement (1 star if completed within target time)
- * 3. No hints used (1 star if 0 hints used)
+ * 2. Win within the target time (2 stars)
+ * 3. Win within target time and use no hints (3 stars)
  */
 class StarManager {
+
+    companion object {
+        const val TARGET_TIME_SECONDS = 60
+    }
+
     /**
      * Calculate stars for a level completion
      */
@@ -17,31 +22,20 @@ class StarManager {
         hintsUsed: Int,
         targetTimeSecond: Int = getTargetTime(levelId)
     ): Int {
-        var stars = 1  // Always 1 star for completing
+        val completedWithinTime = timeSeconds <= targetTimeSecond
 
-        // Star 2: Complete within target time
-        if (timeSeconds <= targetTimeSecond) {
-            stars++
+        return when {
+            completedWithinTime && hintsUsed == 0 -> 3
+            completedWithinTime -> 2
+            else -> 1
         }
-
-        // Star 3: No hints used
-        if (hintsUsed == 0) {
-            stars++
-        }
-
-        return stars.coerceIn(1, 3)
     }
 
     /**
-     * Get target times for levels by difficulty
-     * Returns time in seconds for 3-star achievement
+     * Returns target time in seconds for in-time completion.
      */
-    fun getTargetTime(levelId: Int): Int {
-        return when {
-            levelId <= 5 -> 120    // Easy: 2 minutes
-            levelId <= 8 -> 180    // Medium: 3 minutes
-            else -> 240            // Hard: 4 minutes
-        }
+    fun getTargetTime(@Suppress("UNUSED_PARAMETER") levelId: Int): Int {
+        return TARGET_TIME_SECONDS
     }
 
     /**

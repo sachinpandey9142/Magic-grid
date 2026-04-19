@@ -302,12 +302,12 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
 
     private fun calculateLiveStarTier(): Int {
         val usedHint = hintsUsed > 0
-        val exceededTime = gameManager.getElapsedTimeSeconds() > starTargetTimeSeconds
+        val completedWithinTime = gameManager.getElapsedTimeSeconds() <= starTargetTimeSeconds
 
         return when {
-            usedHint && exceededTime -> 1
-            usedHint || exceededTime -> 2
-            else -> 3
+            completedWithinTime && !usedHint -> 3
+            completedWithinTime -> 2
+            else -> 1
         }
     }
 
@@ -700,14 +700,10 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     private fun calculateProjectedStarTierAfterHintPurchase(): Int {
-        val willUseHint = true
-        val exceededTime = gameManager.getElapsedTimeSeconds() > starTargetTimeSeconds
+        val completedWithinTime = gameManager.getElapsedTimeSeconds() <= starTargetTimeSeconds
 
-        return when {
-            willUseHint && exceededTime -> 1
-            willUseHint || exceededTime -> 2
-            else -> 3
-        }
+        // Purchasing a hint always means hint count > 0, so 3 stars is no longer possible.
+        return if (completedWithinTime) 2 else 1
     }
 
     private fun starTierLabelRes(starTier: Int): Int {
