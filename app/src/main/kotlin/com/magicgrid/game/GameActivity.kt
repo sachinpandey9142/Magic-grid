@@ -18,9 +18,14 @@ import com.magicgrid.controller.GameManager
 import com.magicgrid.data.LevelRepository
 import com.magicgrid.data.ProgressManager
 import com.magicgrid.data.StarManager
+import com.magicgrid.logic.Endpoint
+import com.magicgrid.logic.GameBoard
+import com.magicgrid.logic.Path
+import com.magicgrid.logic.PuzzleSolver
 import com.magicgrid.ui.GameView
 import com.magicgrid.ui.WinDialogFragment
 import kotlin.math.abs
+import kotlin.math.sin
 
 /**
  * Main game activity - where the actual gameplay happens
@@ -49,6 +54,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private lateinit var starTargetTwo: TextView
     private lateinit var starTargetThree: TextView
     private lateinit var starProgressLineFill: View
+    private lateinit var starProgressSpark: View
     private lateinit var starStepThree: View
     private lateinit var starStepTwo: View
     private lateinit var starStepOne: View
@@ -67,6 +73,8 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private var starTargetTimeSeconds = 0
     private var liveStarTier = 3
     private var starHudInitialized = false
+    private val puzzleSolver = PuzzleSolver()
+    private var solvedHintPaths: Map<Int, List<Pair<Int, Int>>>? = null
 
     private data class HintSuggestion(
         val color: Int,
@@ -136,6 +144,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         starTargetTwo = findViewById(R.id.target_text_2)
         starTargetThree = findViewById(R.id.target_text_3)
         starProgressLineFill = findViewById(R.id.star_progress_line_fill)
+        starProgressSpark = findViewById(R.id.star_progress_spark)
         starStepThree = findViewById(R.id.star_step_three_group)
         starStepTwo = findViewById(R.id.star_step_two_group)
         starStepOne = findViewById(R.id.star_step_one_group)
@@ -162,6 +171,8 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         updateStarTargetLabels()
         updateCoinDisplay()
         starProgressLineFill.pivotX = 0f
+        starProgressSpark.pivotX = 0f
+        starProgressSpark.pivotY = 0f
         updateLiveStarHud(animated = false)
 
         // Set up buttons
@@ -272,32 +283,74 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         val targetTier = calculateLiveStarTier()
         val tierChanged = targetTier != liveStarTier
 
-        if (!tierChanged && starHudInitialized) {
-            return
+        val safeTargetTime = starTargetTimeSeconds.coerceAtLeast(1)
+        val elapsedSeconds = gameManager.getElapsedTimeSeconds().toFloat()
+        val inTimeRatio = (elapsedSeconds / safeTargetTime.toFloat()).coerceIn(0f, 1f)
+        val overtimeRatio =
+            ((elapsedSeconds - safeTargetTime.toFloat()) / safeTargetTime.toFloat()).coerceIn(0f, 1f)
+
+        // 0 -> 60s reaches 2-star checkpoint, then overtime progresses toward 1-star edge.
+        val lineScale = if (elapsedSeconds <= safeTargetTime.toFloat()) {
+            (0.04f + (0.48f * inTimeRatio)).coerceIn(0.04f, 0.52f)
+        } else {
+            (0.52f + (0.48f * overtimeRatio)).coerceIn(0.52f, 1f)
         }
 
         liveStarTier = targetTier
-        val lineScale = when (liveStarTier) {
-            3 -> 0.04f
-            2 -> 0.52f
-            else -> 1f
-        }
 
         if (animated && starHudInitialized) {
             starProgressLineFill.animate().cancel()
             starProgressLineFill.animate()
                 .scaleX(lineScale)
-                .setDuration(320)
+                .setDuration(900)
                 .start()
         } else {
             starProgressLineFill.scaleX = lineScale
         }
 
-        applyStarStepVisual(starStepThree, isMuted = liveStarTier < 3, animated = animated)
-        applyStarStepVisual(starStepTwo, isMuted = liveStarTier < 2, animated = animated)
-        applyStarStepVisual(starStepOne, isMuted = false, animated = animated)
+        updateStarProgressSpark(lineScale, animated)
+
+        if (tierChanged || !starHudInitialized) {
+            applyStarStepVisual(starStepThree, isMuted = liveStarTier < 3, animated = animated)
+            applyStarStepVisual(starStepTwo, isMuted = liveStarTier < 2, animated = animated)
+            applyStarStepVisual(starStepOne, isMuted = false, animated = animated)
+        }
 
         starHudInitialized = true
+    }
+
+    private fun updateStarProgressSpark(lineScale: Float, animated: Boolean) {
+        val updateSpark = sparkUpdate@{
+            val trackWidth = starProgressLineFill.width.toFloat()
+            val sparkWidth = starProgressSpark.width.toFloat()
+            if (trackWidth <= 0f || sparkWidth <= 0f) {
+                return@sparkUpdate
+            }
+
+            val maxTravel = (trackWidth - sparkWidth).coerceAtLeast(0f)
+            val targetX = (trackWidth * lineScale - sparkWidth / 2f).coerceIn(0f, maxTravel)
+
+            if (animated && starHudInitialized) {
+                starProgressSpark.animate().cancel()
+                starProgressSpark.animate()
+                    .translationX(targetX)
+                    .setDuration(900)
+                    .start()
+            } else {
+                starProgressSpark.translationX = targetX
+            }
+
+            val pulse = 0.92f + 0.14f * sin(gameManager.getElapsedTimeSeconds().toFloat() * 0.9f)
+            starProgressSpark.scaleX = pulse
+            starProgressSpark.scaleY = pulse
+            starProgressSpark.alpha = if (lineScale >= 0.995f) 0.78f else 1f
+        }
+
+        if (starProgressLineFill.width == 0 || starProgressSpark.width == 0) {
+            starProgressLineFill.post { updateSpark.invoke() }
+        } else {
+            updateSpark.invoke()
+        }
     }
 
     private fun calculateLiveStarTier(): Int {
@@ -346,67 +399,58 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         val remainingColors = gameManager.getRemainingColors()
         if (remainingColors.isEmpty()) return null
 
-        val candidates = mutableListOf<HintCandidate>()
+        val solvedPaths = getSolvedHintPaths() ?: return null
 
-        for (color in remainingColors) {
-            val path = gameManager.board.getPath(color) ?: continue
-            if (path.isComplete()) continue
+        val solvedCandidates = remainingColors.mapNotNull { color ->
+            val path = gameManager.board.getPath(color) ?: return@mapNotNull null
+            if (path.isComplete()) return@mapNotNull null
 
-            val blockedOwnPath = path.cells
-                .map { it.row to it.col }
-                .toSet()
+            val solvedPath = solvedPaths[color] ?: return@mapNotNull null
+            val route = buildHintRouteFromSolvedPath(path, solvedPath)
+            if (route.size < 2) return@mapNotNull null
 
-            if (path.cells.isEmpty()) {
-                buildHintCandidate(
-                    color = color,
-                    anchorRow = path.startRow,
-                    anchorCol = path.startCol,
-                    targetRow = path.endRow,
-                    targetCol = path.endCol,
-                    blockedOwnPath = blockedOwnPath
-                )?.let { candidates.add(it) }
-
-                buildHintCandidate(
-                    color = color,
-                    anchorRow = path.endRow,
-                    anchorCol = path.endCol,
-                    targetRow = path.startRow,
-                    targetCol = path.startCol,
-                    blockedOwnPath = blockedOwnPath
-                )?.let { candidates.add(it) }
-
-                continue
-            }
-
-            val headCell = if (path.isHeadAtEnd) {
-                path.cells.last()
-            } else {
-                path.cells.first()
-            }
-
-            val targetEndpoint = if (path.isHeadAtEnd) {
-                path.startRow to path.startCol
-            } else {
-                path.endRow to path.endCol
-            }
-
-            buildHintCandidate(
-                color = color,
-                anchorRow = headCell.row,
-                anchorCol = headCell.col,
-                targetRow = targetEndpoint.first,
-                targetCol = targetEndpoint.second,
-                blockedOwnPath = blockedOwnPath
-            )?.let { candidates.add(it) }
+            HintSuggestion(color = color, route = route)
         }
 
-        if (candidates.isEmpty()) return null
+        return solvedCandidates.maxByOrNull { it.route.size }
+    }
 
-        val preferred = candidates
-            .filter { it.stepCount >= HINT_ROUTE_MIN_STEPS }
-            .ifEmpty { candidates }
+    private fun getSolvedHintPaths(): Map<Int, List<Pair<Int, Int>>>? {
+        solvedHintPaths?.let { return it }
 
-        return preferred.maxWithOrNull(::compareHintCandidates)?.suggestion
+        val level = gameManager.level
+        val endpoints = level.endpoints.map {
+            Endpoint(
+                color = it.color,
+                startRow = it.startRow,
+                startCol = it.startCol,
+                endRow = it.endRow,
+                endCol = it.endCol
+            )
+        }
+
+        val solveBoard = GameBoard(level.rows, level.cols)
+        val solved = puzzleSolver.solve(solveBoard, endpoints) ?: return null
+        solvedHintPaths = solved
+        return solved
+    }
+
+    private fun buildHintRouteFromSolvedPath(
+        path: Path,
+        solvedPath: List<Pair<Int, Int>>
+    ): List<Pair<Int, Int>> {
+        if (solvedPath.size < 2) return solvedPath
+        if (path.cells.isEmpty()) return solvedPath
+
+        val headCell = if (path.isHeadAtEnd) path.cells.last() else path.cells.first()
+        val headPoint = headCell.row to headCell.col
+        val headIndex = solvedPath.indexOf(headPoint)
+        if (headIndex == -1) return solvedPath
+
+        val forward = solvedPath.subList(headIndex, solvedPath.size)
+        val backward = solvedPath.subList(0, headIndex + 1).asReversed()
+
+        return if (forward.size >= backward.size) forward else backward
     }
 
     private fun buildHintCandidate(

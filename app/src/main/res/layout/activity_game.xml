@@ -210,6 +210,16 @@
                         android:background="@drawable/star_progress_line_fill"
                         android:scaleX="0.04" />
 
+                    <ImageView
+                        android:id="@+id/star_progress_spark"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_gravity="start|center_vertical"
+                        android:alpha="0.98"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_star"
+                        app:tint="@color/accent_gold" />
+
                 </FrameLayout>
 
                 <LinearLayout
@@ -499,9 +509,9 @@
             android:id="@+id/game_banner_ad"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:layout_marginBottom="16dp"
             app:adSize="BANNER"
             app:adUnitId="@string/admob_banner_unit_id" />
 

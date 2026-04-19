@@ -7,27 +7,43 @@ import kotlin.math.abs
  * Ensures all cells can be filled without conflicts
  */
 class PuzzleSolver {
+    companion object {
+        private const val MAX_CANDIDATES_PER_COLOR = 18
+        private const val MAX_PATH_SEARCH_NODES = 32000
+    }
+
     /**
      * Check if a level configuration is solvable
      * Returns true only if all cells can be filled without overlaps
      */
     fun isSolvable(board: GameBoard, endpoints: List<Endpoint>): Boolean {
-        if (endpoints.isEmpty()) return false
+        return solve(board, endpoints) != null
+    }
+
+    /**
+     * Solve puzzle and return full path map per color when successful.
+     * Returns null when no full-board valid solution is found.
+     */
+    fun solve(board: GameBoard, endpoints: List<Endpoint>): Map<Int, List<Pair<Int, Int>>>? {
+        if (endpoints.isEmpty()) return null
 
         val endpointCells = endpoints.flatMap {
             listOf(Pair(it.startRow, it.startCol), Pair(it.endRow, it.endCol))
         }
 
         if (endpointCells.any { (r, c) -> r !in 0 until board.rows || c !in 0 until board.cols }) {
-            return false
+            return null
         }
 
         if (endpointCells.toSet().size != endpointCells.size) {
-            return false
+            return null
         }
 
-        val solvedPaths = trySolve(board, endpoints) ?: return false
-        return arePathsValid(solvedPaths, endpoints) && isGridComplete(board.rows, board.cols, solvedPaths)
+        val solvedPaths = trySolve(board, endpoints) ?: return null
+        val valid = arePathsValid(solvedPaths, endpoints) &&
+            isGridComplete(board.rows, board.cols, solvedPaths)
+
+        return if (valid) solvedPaths else null
     }
 
     /**
@@ -35,35 +51,133 @@ class PuzzleSolver {
      */
     private fun trySolve(board: GameBoard, endpoints: List<Endpoint>): Map<Int, List<Pair<Int, Int>>>? {
         val solvedPaths = mutableMapOf<Int, List<Pair<Int, Int>>>()
-
-        // Route long pairs first to reduce blocked-end failures.
         val ordered = endpoints.sortedByDescending {
             abs(it.startRow - it.endRow) + abs(it.startCol - it.endCol)
         }
 
-        for (endpoint in ordered) {
+        fun search(colorIndex: Int): Boolean {
+            if (colorIndex >= ordered.size) {
+                return isGridComplete(board.rows, board.cols, solvedPaths)
+            }
+
+            val endpoint = ordered[colorIndex]
             val start = Pair(endpoint.startRow, endpoint.startCol)
             val end = Pair(endpoint.endRow, endpoint.endCol)
 
             val blocked = mutableSetOf<Pair<Int, Int>>()
 
-            // Other-color endpoints are always blocked.
+            // Other-color endpoints stay blocked for this color route.
             for (other in endpoints) {
                 if (other.color == endpoint.color) continue
                 blocked.add(Pair(other.startRow, other.startCol))
                 blocked.add(Pair(other.endRow, other.endCol))
             }
 
-            // Already solved paths are blocked to avoid overlaps.
+            // Already assigned routes are blocked to prevent overlap.
             for ((_, path) in solvedPaths) {
                 blocked.addAll(path)
             }
 
-            val path = findPath(start, end, board.rows, board.cols, blocked) ?: return null
-            solvedPaths[endpoint.color] = path
+            val candidates = findCandidatePaths(
+                start = start,
+                end = end,
+                rows = board.rows,
+                cols = board.cols,
+                blockedCells = blocked
+            )
+
+            for (candidate in candidates) {
+                solvedPaths[endpoint.color] = candidate
+                if (search(colorIndex + 1)) {
+                    return true
+                }
+            }
+
+            solvedPaths.remove(endpoint.color)
+            return false
         }
 
-        return solvedPaths
+        return if (search(0)) solvedPaths.toMap() else null
+    }
+
+    private fun findCandidatePaths(
+        start: Pair<Int, Int>,
+        end: Pair<Int, Int>,
+        rows: Int,
+        cols: Int,
+        blockedCells: Set<Pair<Int, Int>>
+    ): List<List<Pair<Int, Int>>> {
+        if (start == end) return listOf(listOf(start))
+
+        val candidates = mutableListOf<List<Pair<Int, Int>>>()
+        val path = mutableListOf(start)
+        val visited = mutableSetOf(start)
+        var nodeBudget = MAX_PATH_SEARCH_NODES
+
+        fun dfs(current: Pair<Int, Int>) {
+            if (nodeBudget <= 0 || candidates.size >= MAX_CANDIDATES_PER_COLOR) {
+                return
+            }
+            nodeBudget--
+
+            if (current == end) {
+                candidates.add(path.toList())
+                return
+            }
+
+            val neighbors = getNeighbors(current, rows, cols)
+                .filter { next ->
+                    next == end || (next !in blockedCells && next !in visited)
+                }
+
+            if (neighbors.isEmpty()) return
+
+            val nonEndNeighbors = neighbors
+                .filter { it != end }
+                .sortedWith(
+                    compareBy<Pair<Int, Int>> {
+                        // Prefer low-degree branches first to reduce dead-end trapping.
+                        availableNeighborCount(it, end, rows, cols, blockedCells, visited)
+                    }.thenByDescending {
+                        // Explore farther cells first so end is not reached too early.
+                        heuristic(it, end)
+                    }
+                )
+
+            val ordered = if (neighbors.any { it == end }) {
+                nonEndNeighbors + end
+            } else {
+                nonEndNeighbors
+            }
+
+            for (next in ordered) {
+                path.add(next)
+                visited.add(next)
+                dfs(next)
+                visited.remove(next)
+                path.removeAt(path.lastIndex)
+
+                if (nodeBudget <= 0 || candidates.size >= MAX_CANDIDATES_PER_COLOR) {
+                    break
+                }
+            }
+        }
+
+        dfs(start)
+        return candidates.sortedByDescending { it.size }
+    }
+
+    private fun availableNeighborCount(
+        cell: Pair<Int, Int>,
+        end: Pair<Int, Int>,
+        rows: Int,
+        cols: Int,
+        blockedCells: Set<Pair<Int, Int>>,
+        visited: Set<Pair<Int, Int>>
+    ): Int {
+        return getNeighbors(cell, rows, cols).count { next ->
+            next == end || (next !in blockedCells && next !in visited)
+        }
     }
 
     /**
