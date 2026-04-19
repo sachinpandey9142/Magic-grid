@@ -104,6 +104,24 @@
     <string name="hint_button_with_count">Hint x%1$d</string>
     <string name="hint_not_enough_coins" tools:ignore="PluralsCandidate">Need %1$d coins for a hint.</string>
     <string name="hint_no_move_available">No valid hint move available right now.</string>
+    <string name="hint_use_confirm_title">Use a Hint?</string>
+    <string name="hint_use_confirm_message">You have %1$d hint(s) available. Use one now?
+
+Projected star tier after using hint: %2$s</string>
+    <string name="hint_use_confirm_button">Use Hint</string>
+    <string name="hint_use_dialog_subtitle">Reveal a smart route on the current board</string>
+    <string name="hint_use_dialog_message">This uses 1 hint immediately and helps recover from wrong paths.</string>
+    <string name="hint_use_dialog_hints_left_format">Hints available now: %1$d</string>
+    <string name="hint_use_dialog_projected_tier_format">Projected star tier after using hint: %1$s</string>
+    <string name="hint_empty_title">No Hints Left</string>
+    <string name="hint_empty_message">You have 0 hints. Watch an ad for one instant hint or buy a hint pack.</string>
+    <string name="hint_empty_watch_ad_button">Watch Ad (+1 Hint)</string>
+    <string name="hint_empty_buy_pack_button">Buy Hint Pack</string>
+    <string name="hint_pack_chooser_title">Choose Hint Pack</string>
+    <string name="hint_pack_option_format">%1$d hints • %2$s</string>
+    <string name="hint_pack_purchase_title">Confirm Hint Pack</string>
+    <string name="hint_pack_purchase_message">Buy %1$d hints for %2$s?</string>
+    <string name="hint_pack_purchase_success_format">Purchased %1$d hints.</string>
     <string name="coins_earned_format" tools:ignore="PluralsCandidate">+%1$d coins earned!</string>
     <string name="hint_purchase_title">Buy Hint?</string>
     <string name="hint_purchase_subtitle">Smart route reveal (up to 3 steps)</string>

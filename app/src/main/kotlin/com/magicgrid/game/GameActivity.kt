@@ -1,6 +1,5 @@
 package com.magicgrid.game
 
-import android.animation.ObjectAnimator
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -79,6 +78,17 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         val stepCount: Int,
         val endDistance: Int,
         val improvement: Int
+    )
+
+    private data class HintPack(
+        val hints: Int,
+        val priceLabel: String
+    )
+
+    private val hintMoneyPacks = listOf(
+        HintPack(hints = 3, priceLabel = "$0.99"),
+        HintPack(hints = 8, priceLabel = "$1.99"),
+        HintPack(hints = 20, priceLabel = "$3.99")
     )
 
     // Timer
@@ -185,14 +195,13 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
                 return@setOnClickListener
             }
 
-            val currentCoins = progressManager.getCoins()
-            if (currentCoins < HINT_COIN_COST) {
+            val hintsAvailable = getAvailableHintCount()
+            if (hintsAvailable > 0) {
+                showUseHintConfirmationDialog(hintsAvailable)
+            } else {
                 hintButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                showHintPurchaseDialog(currentCoins, highlightInsufficient = true)
-                return@setOnClickListener
+                showNoHintsDialog()
             }
-
-            showHintPurchaseDialog(currentCoins)
         }
 
         backButton.setOnClickListener {
@@ -241,8 +250,12 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     private fun updateHintButtonLabel() {
-        val hintsLeft = (progressManager.getCoins() / HINT_COIN_COST).coerceAtLeast(0)
+        val hintsLeft = getAvailableHintCount()
         hintButton.text = getString(R.string.hint_button_with_count, hintsLeft)
+    }
+
+    private fun getAvailableHintCount(): Int {
+        return (progressManager.getCoins() / HINT_COIN_COST).coerceAtLeast(0)
     }
 
     private fun updateStarTargetLabels() {
@@ -590,44 +603,23 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         return abs(toRow - fromRow) + abs(toCol - fromCol)
     }
 
-    private fun showHintPurchaseDialog(currentCoins: Int, highlightInsufficient: Boolean = false) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_hint_purchase, null)
-
-        val costValue = dialogView.findViewById<TextView>(R.id.hint_dialog_cost_value)
-        val balanceValue = dialogView.findViewById<TextView>(R.id.hint_dialog_balance_value)
-        val hintsLeftValue = dialogView.findViewById<TextView>(R.id.hint_dialog_hints_left_value)
-        val hintsAfterBuyValue = dialogView.findViewById<TextView>(R.id.hint_dialog_hints_after_buy_value)
-        val hintsUsedValue = dialogView.findViewById<TextView>(R.id.hint_dialog_hints_used_value)
-        val starAfterValue = dialogView.findViewById<TextView>(R.id.hint_dialog_star_after_value)
-        val cancelButton = dialogView.findViewById<Button>(R.id.btn_hint_dialog_cancel)
-        val buyButton = dialogView.findViewById<Button>(R.id.btn_hint_dialog_buy)
-        val dialogCard = dialogView.findViewById<View>(R.id.hint_dialog_card)
-
-        val hintsLeftNow = (currentCoins / HINT_COIN_COST).coerceAtLeast(0)
-        val hintsLeftAfterBuy = ((currentCoins - HINT_COIN_COST).coerceAtLeast(0) / HINT_COIN_COST)
-        val projectedHintsUsed = hintsUsed + 1
+    private fun showUseHintConfirmationDialog(hintsAvailable: Int) {
         val projectedTier = calculateProjectedStarTierAfterHintPurchase()
-        val isInsufficient = highlightInsufficient || currentCoins < HINT_COIN_COST
+        val projectedTierLabel = getString(starTierLabelRes(projectedTier))
 
-        costValue.text = getString(R.string.hint_dialog_cost_value_format, HINT_COIN_COST)
-        balanceValue.text = getString(R.string.hint_dialog_balance_value_format, currentCoins)
-        hintsLeftValue.text = getString(R.string.hint_dialog_hints_left_value_format, hintsLeftNow)
-        hintsAfterBuyValue.text = getString(R.string.hint_dialog_hints_after_buy_value_format, hintsLeftAfterBuy)
-        hintsUsedValue.text = getString(R.string.hint_dialog_hints_used_value_format, projectedHintsUsed)
-        if (isInsufficient) {
-            starAfterValue.text = getString(R.string.hint_dialog_watch_ad_value)
-            starAfterValue.setTextColor(getColor(R.color.level_completed))
-            buyButton.text = getString(R.string.hint_dialog_watch_ad_button)
-            cancelButton.text = getString(R.string.dialog_cancel)
-        } else {
-            starAfterValue.text = getString(
-                R.string.hint_dialog_star_after_value_format,
-                getString(starTierLabelRes(projectedTier))
-            )
-            starAfterValue.setTextColor(starTierColor(projectedTier))
-            buyButton.text = getString(R.string.buy_hint)
-            cancelButton.text = getString(R.string.dialog_cancel)
-        }
+        val dialogView = layoutInflater.inflate(R.layout.dialog_hint_confirm, null)
+        val hintsValue = dialogView.findViewById<TextView>(R.id.hint_confirm_hints_value)
+        val projectedTierValue = dialogView.findViewById<TextView>(R.id.hint_confirm_star_value)
+        val cancelButton = dialogView.findViewById<Button>(R.id.btn_hint_confirm_cancel)
+        val useButton = dialogView.findViewById<Button>(R.id.btn_hint_confirm_use)
+        val dialogCard = dialogView.findViewById<View>(R.id.hint_confirm_card)
+
+        hintsValue.text = getString(R.string.hint_use_dialog_hints_left_format, hintsAvailable)
+        projectedTierValue.text = getString(
+            R.string.hint_use_dialog_projected_tier_format,
+            projectedTierLabel
+        )
+        projectedTierValue.setTextColor(starTierColor(projectedTier))
 
         val dialog = AlertDialog.Builder(this, R.style.DialogAnimation)
             .setView(dialogView)
@@ -641,14 +633,10 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
             dialog.dismiss()
         }
 
-        buyButton.setOnClickListener {
-            provideControlFeedback(buyButton)
+        useButton.setOnClickListener {
+            provideControlFeedback(useButton)
             dialog.dismiss()
-            if (isInsufficient) {
-                watchAdForHint()
-            } else {
-                purchaseHint()
-            }
+            purchaseHint()
         }
 
         dialog.setOnShowListener {
@@ -663,34 +651,52 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
                 .translationY(0f)
                 .setDuration(200)
                 .start()
-
-            if (isInsufficient) {
-                buyButton.postDelayed({
-                    animateDisabledButtonShake(buyButton)
-                }, 260)
-            }
         }
 
         dialog.show()
     }
 
-    private fun animateDisabledButtonShake(target: View) {
-        target.translationX = 0f
-        ObjectAnimator.ofFloat(
-            target,
-            View.TRANSLATION_X,
-            0f,
-            -18f,
-            18f,
-            -12f,
-            12f,
-            -6f,
-            6f,
-            0f
-        ).apply {
-            duration = 340
-            start()
-        }
+    private fun showNoHintsDialog() {
+        AlertDialog.Builder(this, R.style.DialogAnimation)
+            .setTitle(getString(R.string.hint_empty_title))
+            .setMessage(getString(R.string.hint_empty_message))
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .setNeutralButton(R.string.hint_empty_buy_pack_button) { _, _ ->
+                showHintPackChooserDialog()
+            }
+            .setPositiveButton(R.string.hint_empty_watch_ad_button) { _, _ ->
+                watchAdForHint()
+            }
+            .show()
+    }
+
+    private fun showHintPackChooserDialog() {
+        val optionLabels = hintMoneyPacks.map {
+            getString(R.string.hint_pack_option_format, it.hints, it.priceLabel)
+        }.toTypedArray()
+
+        AlertDialog.Builder(this, R.style.DialogAnimation)
+            .setTitle(getString(R.string.hint_pack_chooser_title))
+            .setItems(optionLabels) { _, which ->
+                val selectedPack = hintMoneyPacks.getOrNull(which) ?: return@setItems
+                confirmHintPackPurchase(selectedPack)
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
+    }
+
+    private fun confirmHintPackPurchase(pack: HintPack) {
+        AlertDialog.Builder(this, R.style.DialogAnimation)
+            .setTitle(getString(R.string.hint_pack_purchase_title))
+            .setMessage(getString(R.string.hint_pack_purchase_message, pack.hints, pack.priceLabel))
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .setPositiveButton(R.string.store_buy_now) { _, _ ->
+                val coinsToAdd = pack.hints * HINT_COIN_COST
+                progressManager.addCoins(coinsToAdd)
+                updateCoinDisplay()
+                showToast(getString(R.string.hint_pack_purchase_success_format, pack.hints))
+            }
+            .show()
     }
 
     private fun calculateProjectedStarTierAfterHintPurchase(): Int {
@@ -730,7 +736,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         if (!progressManager.spendCoins(HINT_COIN_COST)) {
             hintButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             updateCoinDisplay()
-            showHintPurchaseDialog(progressManager.getCoins(), highlightInsufficient = true)
+            showNoHintsDialog()
             return
         }
 
