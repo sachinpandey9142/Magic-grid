@@ -308,6 +308,6 @@ class LevelSelectActivity : AppCompatActivity() {
     }
 
     private fun isPackUnlocked(pack: DifficultyPack): Boolean {
-        return progressManager.getHighestUnlockedLevel() >= pack.levelRange.first
+        return progressManager.isLevelUnlocked(pack.levelRange.first)
     }
 }

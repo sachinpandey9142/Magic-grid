@@ -56,7 +56,10 @@
     <string name="quick_play_label">Quick Play</string>
     <string name="quick_play_level_format">Quick Play: Level %1$d</string>
     <string name="quick_play_locked">Quick Play Locked (Unlock at Level %1$d)</string>
+    <string name="quick_play_locked_stars">Quick Play Locked (Need %1$d stars, you have %2$d)</string>
     <string name="level_locked_toast_detail">This level is locked. Highest unlocked level: %1$d</string>
+    <string name="level_locked_previous_toast">Complete Level %1$d to unlock this level.</string>
+    <string name="level_locked_stars_toast">Need %1$d total stars to unlock this level. You have %2$d.</string>
     <string name="level_node_number_format">%1$d</string>
     <string name="level_node_completed_format">%1$d\n%2$d*</string>
     <string name="level_card_title_format">Level %1$d</string>
@@ -69,8 +72,8 @@
     <string name="store_title">Coin Store</string>
     <string name="store_subtitle">Top up with ads or instant coin packs</string>
     <string name="store_balance_format">Balance: %1$d coins</string>
-    <string name="store_watch_ad">Watch Ad (+30 coins)</string>
-    <string name="store_watch_ad_desc">Free reward: watch a short video and get 30 coins.</string>
+    <string name="store_watch_ad">Watch Ad (+10 coins)</string>
+    <string name="store_watch_ad_desc">Free reward: watch a short video and get 10 coins.</string>
     <string name="store_watch_ad_reward_format">+%1$d coins from ad reward!</string>
     <string name="store_cash_title">Instant Coin Packs</string>
     <string name="store_buy_small">Buy 250 coins ($1.99)</string>
@@ -92,6 +95,10 @@
     <string name="game_all_levels_complete_toast">Congratulations! You completed all levels!</string>
     <string name="game_paused">Paused</string>
     <string name="game_resumed">Resumed</string>
+    <string name="pause_dialog_title">Game Paused</string>
+    <string name="pause_dialog_message">Take a break. Continue this level or restart from the beginning.</string>
+    <string name="pause_dialog_continue">Continue</string>
+    <string name="pause_dialog_restart">Restart</string>
     <string name="star_target_three_format">No hint + finish in %1$s</string>
     <string name="star_target_two_format">Finish in %1$s</string>
     <string name="star_target_one_format">Complete level</string>
@@ -145,6 +152,7 @@ Current coins: %2$d</string>
     <string name="star_tier_label_one">1 star</string>
     <string name="buy_hint">Buy Hint</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="home">Home</string>
     <string name="menu">Menu</string>
     <string name="next_level">Next Level</string>
     <string name="replay">Replay</string>
@@ -155,8 +163,19 @@ Current coins: %2$d</string>
     <string name="win_dialog_subtitle">Your routes are crystal clean.</string>
     <string name="win_time_label">⏱ Time:</string>
     <string name="win_moves_label">◆ Moves:</string>
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
-    <string name="admob_banner_unit_id">ca-app-pub-3940256099942544/6300978111</string>
-    <string name="admob_interstitial_unit_id">ca-app-pub-3940256099942544/1033173712</string>
-    <string name="admob_rewarded_unit_id">ca-app-pub-3940256099942544/5224354917</string>
+    <string name="lose_dialog_title">Time Up!</string>
+    <string name="lose_dialog_subtitle">The timer reached zero before all paths were connected.</string>
+    <string name="lose_time_limit_label">Time limit</string>
+    <string name="lose_time_used_label">Time used</string>
+    <string name="game_complete_title">You Completed The Game!</string>
+    <string name="game_complete_subtitle">Congratulations! Every challenge from Level 1 to Level 100 is complete.</string>
+    <string name="game_complete_stars_earned">Stars earned</string>
+    <string name="game_complete_total_stars">Total stars</string>
+    <string name="game_complete_levels_done">Levels done</string>
+    <string name="game_complete_level_time">Final level time</string>
+    <string name="game_complete_level_moves">Final level moves</string>
+    <string name="admob_app_id">ca-app-pub-8048301971162422~7881337552</string>
+    <string name="admob_banner_unit_id">ca-app-pub-8048301971162422/8128537532</string>
+    <string name="admob_interstitial_unit_id">ca-app-pub-8048301971162422/7043732754</string>
+    <string name="admob_rewarded_unit_id">ca-app-pub-8048301971162422/8998766078</string>
 </resources>

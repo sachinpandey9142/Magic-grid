@@ -1,5 +1,6 @@
 package com.magicgrid.logic
 
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.random.Random
 
@@ -9,6 +10,7 @@ import kotlin.random.Random
  */
 class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     private val random = Random(seed)
+    private val puzzleSolver = PuzzleSolver()
 
     private data class DifficultyProfile(
         val colorRange: IntRange,
@@ -18,6 +20,12 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         val minPairDistance: Int,
         val interiorEndpointRatio: Double,
         val maxClosePairs: Int,
+        val minTurnsPerPath: Int,
+        val maxStraightPairs: Int,
+        val maxCornerPairs: Int,
+        val maxBorderStraightPairs: Int,
+        val requireUniqueSolution: Boolean,
+        val allowRelaxedFallback: Boolean,
         val pathShuffleMultiplier: Int,
         val attempts: Int
     )
@@ -62,42 +70,52 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
             }
         }
 
-        // Relax constraints slightly if strict generation could not find enough variety.
-        val relaxedProfile = profile.copy(
-            spreadFactor = profile.spreadFactor * 0.9,
-            avgPairDistanceFactor = profile.avgPairDistanceFactor * 0.9,
-            minPairDistance = maxOf(2, profile.minPairDistance - 1),
-            interiorEndpointRatio = profile.interiorEndpointRatio * 0.82,
-            maxClosePairs = profile.maxClosePairs + 1
-        )
-
-        val relaxed = buildGuaranteedEndpoints(
+        val strictFallback = buildGuaranteedEndpoints(
             gridSize = gridSize,
             colorCount = colorCount,
-            minSegmentLength = maxOf(3, minSegmentLength - 1),
+            minSegmentLength = minSegmentLength,
             pathShuffleSteps = gridSize * gridSize * maxOf(2, profile.pathShuffleMultiplier / 2),
-            profile = relaxedProfile,
+            profile = profile,
             transformId = 0
         )
 
-        if (relaxed != null) {
-            return toGeneratedLevel(gridSize, difficulty, relaxed)
+        if (strictFallback != null) {
+            return toGeneratedLevel(gridSize, difficulty, strictFallback)
         }
 
-        // Emergency fallback that keeps boards solvable and avoids generation deadlocks.
-        val emergencyMinSegment = maxOf(3, gridSize - 2)
-        val emergencyColorCount = pickColorCount(3..5, gridSize, emergencyMinSegment)
-        val emergency = buildGuaranteedEndpoints(
-            gridSize = gridSize,
-            colorCount = emergencyColorCount,
-            minSegmentLength = emergencyMinSegment,
-            pathShuffleSteps = gridSize * gridSize,
-            profile = null,
-            transformId = 0,
-            strictDistribution = false
-        ) ?: return null
+        if (!profile.allowRelaxedFallback) {
+            return null
+        }
 
-        return toGeneratedLevel(gridSize, difficulty, emergency)
+        // Relax constraints slightly if strict generation could not find enough variety.
+        val relaxedProfile = profile.copy(
+            spreadFactor = profile.spreadFactor * 0.92,
+            avgPairDistanceFactor = profile.avgPairDistanceFactor * 0.93,
+            minPairDistance = maxOf(2, profile.minPairDistance - 1),
+            interiorEndpointRatio = profile.interiorEndpointRatio * 0.9,
+            maxClosePairs = profile.maxClosePairs + 1,
+            minTurnsPerPath = maxOf(2, profile.minTurnsPerPath - 1),
+            maxStraightPairs = profile.maxStraightPairs + 1,
+            maxCornerPairs = profile.maxCornerPairs + 1,
+            maxBorderStraightPairs = profile.maxBorderStraightPairs + 1,
+            attempts = maxOf(20, profile.attempts / 2)
+        )
+
+        repeat(relaxedProfile.attempts) {
+            val relaxed = buildGuaranteedEndpoints(
+                gridSize = gridSize,
+                colorCount = colorCount,
+                minSegmentLength = maxOf(3, minSegmentLength - 1),
+                pathShuffleSteps = gridSize * gridSize * maxOf(2, profile.pathShuffleMultiplier / 2),
+                profile = relaxedProfile
+            )
+
+            if (relaxed != null) {
+                return toGeneratedLevel(gridSize, difficulty, relaxed)
+            }
+        }
+
+        return null
     }
 
     private fun toGeneratedLevel(
@@ -126,49 +144,73 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
     private fun resolveDifficultyProfile(difficulty: String, gridSize: Int): DifficultyProfile {
         return when {
             difficulty.equals("easy", ignoreCase = true) -> DifficultyProfile(
-                colorRange = 4..5,
-                segmentSlack = 1,
-                spreadFactor = 0.72,
-                avgPairDistanceFactor = 0.76,
-                minPairDistance = maxOf(3, gridSize / 2),
-                interiorEndpointRatio = 0.35,
-                maxClosePairs = 2,
-                pathShuffleMultiplier = 4,
-                attempts = 56
+                colorRange = 5..5,
+                segmentSlack = 0,
+                spreadFactor = 0.76,
+                avgPairDistanceFactor = 0.82,
+                minPairDistance = maxOf(4, (gridSize / 2) + 1),
+                interiorEndpointRatio = 0.5,
+                maxClosePairs = 1,
+                minTurnsPerPath = 3,
+                maxStraightPairs = 1,
+                maxCornerPairs = 1,
+                maxBorderStraightPairs = 1,
+                requireUniqueSolution = true,
+                allowRelaxedFallback = true,
+                pathShuffleMultiplier = 5,
+                attempts = 48
             )
 
             difficulty.equals("medium", ignoreCase = true) -> DifficultyProfile(
-                colorRange = 5..6,
-                segmentSlack = 1,
-                spreadFactor = 0.76,
-                avgPairDistanceFactor = 0.84,
-                minPairDistance = maxOf(3, (gridSize / 2) + 1),
-                interiorEndpointRatio = 0.43,
-                maxClosePairs = 1,
-                pathShuffleMultiplier = 6,
-                attempts = 76
+                colorRange = 6..6,
+                segmentSlack = 0,
+                spreadFactor = 0.82,
+                avgPairDistanceFactor = 0.9,
+                minPairDistance = maxOf(4, (gridSize / 2) + 1),
+                interiorEndpointRatio = 0.62,
+                maxClosePairs = 0,
+                minTurnsPerPath = 4,
+                maxStraightPairs = 0,
+                maxCornerPairs = 0,
+                maxBorderStraightPairs = 0,
+                requireUniqueSolution = true,
+                allowRelaxedFallback = false,
+                pathShuffleMultiplier = 7,
+                attempts = 72
             )
 
             difficulty.equals("hard", ignoreCase = true) -> DifficultyProfile(
-                colorRange = 6..7,
-                segmentSlack = 2,
-                spreadFactor = 0.8,
-                avgPairDistanceFactor = 0.9,
-                minPairDistance = maxOf(4, (gridSize / 2) + 1),
-                interiorEndpointRatio = 0.5,
+                colorRange = 7..7,
+                segmentSlack = 0,
+                spreadFactor = 0.88,
+                avgPairDistanceFactor = 0.98,
+                minPairDistance = maxOf(5, (gridSize / 2) + 2),
+                interiorEndpointRatio = 0.78,
                 maxClosePairs = 0,
-                pathShuffleMultiplier = 8,
+                minTurnsPerPath = 5,
+                maxStraightPairs = 0,
+                maxCornerPairs = 0,
+                maxBorderStraightPairs = 0,
+                requireUniqueSolution = true,
+                allowRelaxedFallback = false,
+                pathShuffleMultiplier = 9,
                 attempts = 96
             )
 
             else -> DifficultyProfile(
                 colorRange = 5..6,
-                segmentSlack = 1,
+                segmentSlack = 0,
                 spreadFactor = 0.74,
-                avgPairDistanceFactor = 0.8,
-                minPairDistance = maxOf(3, gridSize / 2),
-                interiorEndpointRatio = 0.4,
+                avgPairDistanceFactor = 0.86,
+                minPairDistance = maxOf(4, (gridSize / 2) + 1),
+                interiorEndpointRatio = 0.54,
                 maxClosePairs = 1,
+                minTurnsPerPath = 3,
+                maxStraightPairs = 1,
+                maxCornerPairs = 1,
+                maxBorderStraightPairs = 1,
+                requireUniqueSolution = true,
+                allowRelaxedFallback = true,
                 pathShuffleMultiplier = 5,
                 attempts = 64
             )
@@ -210,13 +252,17 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
             ?: return null
 
         val colors = palette.shuffled(random).take(colorCount)
+        val segmentRoutes = mutableListOf<List<Pair<Int, Int>>>()
         val endpoints = mutableListOf<ColorEndpointSpec>()
 
         var cursor = 0
         for (i in 0 until colorCount) {
             val segmentLength = segmentLengths[i]
-            val start = transformed[cursor]
-            val end = transformed[cursor + segmentLength - 1]
+            val segment = transformed.subList(cursor, cursor + segmentLength).toList()
+            segmentRoutes.add(segment)
+
+            val start = segment.first()
+            val end = segment.last()
             endpoints.add(
                 ColorEndpointSpec(
                     color = colors[i],
@@ -229,6 +275,10 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
             cursor += segmentLength
         }
 
+        if (profile != null && !passesTurnComplexityCheck(segmentRoutes, profile)) {
+            return null
+        }
+
         if (strictDistribution) {
             val passes = if (profile != null) {
                 passesDifficultyChecks(endpoints, gridSize, profile)
@@ -239,7 +289,62 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
             if (!passes) return null
         }
 
+        if (profile?.requireUniqueSolution == true && !hasUniqueSolution(endpoints, gridSize)) {
+            return null
+        }
+
         return endpoints
+    }
+
+    private fun passesTurnComplexityCheck(
+        segmentRoutes: List<List<Pair<Int, Int>>>,
+        profile: DifficultyProfile
+    ): Boolean {
+        if (segmentRoutes.isEmpty()) return false
+
+        return segmentRoutes.all { route ->
+            if (route.size < 2) {
+                false
+            } else {
+                val maxTurnsPossible = maxOf(0, route.size - 2)
+                val requiredTurns = minOf(profile.minTurnsPerPath, maxTurnsPossible)
+                countTurns(route) >= requiredTurns
+            }
+        }
+    }
+
+    private fun countTurns(route: List<Pair<Int, Int>>): Int {
+        if (route.size < 3) return 0
+
+        var turns = 0
+        for (i in 1 until route.lastIndex) {
+            val prev = route[i - 1]
+            val current = route[i]
+            val next = route[i + 1]
+
+            val firstDir = Pair(current.first - prev.first, current.second - prev.second)
+            val secondDir = Pair(next.first - current.first, next.second - current.second)
+            if (firstDir != secondDir) {
+                turns++
+            }
+        }
+
+        return turns
+    }
+
+    private fun hasUniqueSolution(endpoints: List<ColorEndpointSpec>, gridSize: Int): Boolean {
+        val board = GameBoard(gridSize, gridSize)
+        val solveEndpoints = endpoints.map { ep ->
+            Endpoint(
+                color = ep.color,
+                startRow = ep.startRow,
+                startCol = ep.startCol,
+                endRow = ep.endRow,
+                endCol = ep.endCol
+            )
+        }
+
+        return puzzleSolver.hasUniqueSolution(board, solveEndpoints)
     }
 
     private fun randomizeHamiltonianPath(
@@ -399,7 +504,42 @@ class LevelGenerator(private val seed: Long = System.currentTimeMillis()) {
         val closePairs = pairDistances.count { it <= closePairThreshold }
         if (closePairs > profile.maxClosePairs) return false
 
+        val straightPairs = endpoints.count { ep ->
+            ep.startRow == ep.endRow || ep.startCol == ep.endCol
+        }
+        if (straightPairs > profile.maxStraightPairs) return false
+
+        val cornerPairs = endpoints.count { ep ->
+            isCornerCell(Pair(ep.startRow, ep.startCol), gridSize) &&
+                isCornerCell(Pair(ep.endRow, ep.endCol), gridSize)
+        }
+        if (cornerPairs > profile.maxCornerPairs) return false
+
+        val obviousBorderStraightPairs = endpoints.count { ep ->
+            val start = Pair(ep.startRow, ep.startCol)
+            val end = Pair(ep.endRow, ep.endCol)
+            val aligned = ep.startRow == ep.endRow || ep.startCol == ep.endCol
+            val longStraight = abs(ep.startRow - ep.endRow) + abs(ep.startCol - ep.endCol) >= (gridSize - 2)
+
+            aligned && longStraight &&
+                isBorderCell(start, gridSize) &&
+                isBorderCell(end, gridSize)
+        }
+        if (obviousBorderStraightPairs > profile.maxBorderStraightPairs) return false
+
         return true
+    }
+
+    private fun isCornerCell(cell: Pair<Int, Int>, gridSize: Int): Boolean {
+        val last = gridSize - 1
+        return (cell.first == 0 || cell.first == last) &&
+            (cell.second == 0 || cell.second == last)
+    }
+
+    private fun isBorderCell(cell: Pair<Int, Int>, gridSize: Int): Boolean {
+        val last = gridSize - 1
+        return cell.first == 0 || cell.first == last ||
+            cell.second == 0 || cell.second == last
     }
 
     private fun passesDistributionCheck(

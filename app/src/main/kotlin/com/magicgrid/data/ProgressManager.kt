@@ -12,7 +12,10 @@ class ProgressManager(context: Context) {
 
     companion object {
         // Testing override: set to false before shipping.
-        private const val FORCE_UNLOCK_ALL_LEVELS = true
+        private const val FORCE_UNLOCK_ALL_LEVELS = false
+        private const val STAR_GATE_INTERVAL = 10
+        private const val STAR_GATE_START_LEVEL = 11
+        private const val STARS_PER_GATE = 25
         private const val COMPLETED_LEVELS_KEY = "completed_levels"
         private const val CURRENT_LEVEL_KEY = "current_level"
         private const val HIGHEST_UNLOCKED_LEVEL_KEY = "highest_unlocked_level"
@@ -91,16 +94,18 @@ class ProgressManager(context: Context) {
             return totalLevels
         }
 
+        return refreshHighestUnlockedLevel(totalLevels)
+    }
+
+    private fun refreshHighestUnlockedLevel(totalLevels: Int): Int {
+        val normalizedTotalLevels = totalLevels.coerceAtLeast(1)
+
         val stored = sharedPreferences
             .getInt(HIGHEST_UNLOCKED_LEVEL_KEY, 1)
-            .coerceIn(1, totalLevels)
+            .coerceIn(1, normalizedTotalLevels)
 
-        val completedMax = getCompletedLevels()
-            .mapNotNull { it.toIntOrNull() }
-            .maxOrNull() ?: 0
-
-        val derived = (completedMax + 1).coerceIn(1, totalLevels)
-        val highest = maxOf(stored, derived)
+        val computed = computeHighestUnlockedLevel(normalizedTotalLevels)
+        val highest = computed.coerceIn(1, normalizedTotalLevels)
 
         if (highest != stored) {
             sharedPreferences.edit().putInt(HIGHEST_UNLOCKED_LEVEL_KEY, highest).apply()
@@ -109,23 +114,75 @@ class ProgressManager(context: Context) {
         return highest
     }
 
+    private fun computeHighestUnlockedLevel(totalLevels: Int): Int {
+        if (totalLevels <= 1) return 1
+
+        val completedLevels = getCompletedLevels()
+            .mapNotNull { it.toIntOrNull() }
+            .toSet()
+        val totalStars = getTotalStars()
+
+        var highestUnlocked = 1
+        for (candidateLevel in 2..totalLevels) {
+            if (canUnlockLevel(candidateLevel, completedLevels, totalStars)) {
+                highestUnlocked = candidateLevel
+            } else {
+                break
+            }
+        }
+
+        return highestUnlocked
+    }
+
+    private fun canUnlockLevel(levelId: Int, completedLevels: Set<Int>, totalStars: Int): Boolean {
+        if (levelId <= 1) return true
+        val previousLevel = levelId - 1
+        if (previousLevel !in completedLevels) return false
+        return totalStars >= getStarsRequiredForLevel(levelId)
+    }
+
+    fun getStarsRequiredForLevel(levelId: Int): Int {
+        val normalizedLevel = levelId.coerceAtLeast(1)
+        if (normalizedLevel < STAR_GATE_START_LEVEL) {
+            return 0
+        }
+
+        val gateIndex = ((normalizedLevel - 1) / STAR_GATE_INTERVAL).coerceAtLeast(1)
+        return gateIndex * STARS_PER_GATE
+    }
+
+    fun getStarsShortfallForLevel(levelId: Int): Int {
+        val requiredStars = getStarsRequiredForLevel(levelId)
+        if (requiredStars <= 0) {
+            return 0
+        }
+        return (requiredStars - getTotalStars()).coerceAtLeast(0)
+    }
+
     fun isLevelUnlocked(levelId: Int): Boolean {
         if (FORCE_UNLOCK_ALL_LEVELS) {
             val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
             return levelId in 1..totalLevels
         }
 
-        if (levelId <= 1) return true
-        return levelId <= getHighestUnlockedLevel()
+        val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
+        val normalizedLevel = levelId.coerceIn(1, totalLevels)
+        if (normalizedLevel <= 1) return true
+        return normalizedLevel <= getHighestUnlockedLevel()
     }
 
     fun unlockNextLevel(completedLevelId: Int) {
-        val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
-        val candidate = (completedLevelId + 1).coerceIn(1, totalLevels)
-        val highest = getHighestUnlockedLevel()
-        if (candidate > highest) {
-            sharedPreferences.edit().putInt(HIGHEST_UNLOCKED_LEVEL_KEY, candidate).apply()
+        if (FORCE_UNLOCK_ALL_LEVELS) {
+            return
         }
+
+        val totalLevels = LevelRepository.getTotalLevels().coerceAtLeast(1)
+        val normalizedCompletedLevel = completedLevelId.coerceIn(1, totalLevels)
+        if (!isLevelCompleted(normalizedCompletedLevel)) {
+            return
+        }
+
+        refreshHighestUnlockedLevel(totalLevels)
     }
 
     /**
@@ -289,6 +346,10 @@ class ProgressManager(context: Context) {
         hintsMap[levelId.toString()] = hintsUsed.toString()
 
         saveMap(LEVEL_HINTS_KEY, hintsMap)
+
+        if (!FORCE_UNLOCK_ALL_LEVELS) {
+            refreshHighestUnlockedLevel(LevelRepository.getTotalLevels().coerceAtLeast(1))
+        }
     }
 
     /**

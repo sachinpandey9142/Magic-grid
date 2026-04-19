@@ -10,7 +10,12 @@ package com.magicgrid.data
 class StarManager {
 
     companion object {
-        const val TARGET_TIME_SECONDS = 60
+        private const val TIME_LIMIT_EARLY = 120
+        private const val TIME_LIMIT_EARLY_MID = 90
+        private const val TIME_LIMIT_MID = 60
+        private const val TIME_LIMIT_LATE = 45
+        private const val TIME_LIMIT_EXPERT = 30
+        private const val TIME_LIMIT_FINAL = 15
     }
 
     /**
@@ -34,8 +39,15 @@ class StarManager {
     /**
      * Returns target time in seconds for in-time completion.
      */
-    fun getTargetTime(@Suppress("UNUSED_PARAMETER") levelId: Int): Int {
-        return TARGET_TIME_SECONDS
+    fun getTargetTime(levelId: Int): Int {
+        return when (levelId) {
+            in 1..30 -> TIME_LIMIT_EARLY
+            in 31..50 -> TIME_LIMIT_EARLY_MID
+            in 51..70 -> TIME_LIMIT_MID
+            in 71..85 -> TIME_LIMIT_LATE
+            in 86..95 -> TIME_LIMIT_EXPERT
+            else -> TIME_LIMIT_FINAL
+        }
     }
 
     /**

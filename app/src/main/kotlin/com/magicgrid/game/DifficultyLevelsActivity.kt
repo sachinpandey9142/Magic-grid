@@ -54,6 +54,7 @@ class DifficultyLevelsActivity : AppCompatActivity() {
     private lateinit var levelMapContainer: LinearLayout
 
     private lateinit var selectedPack: DifficultyPack
+    private var packLoadRequest = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,13 +115,35 @@ class DifficultyLevelsActivity : AppCompatActivity() {
     }
 
     private fun renderPackDetails() {
-        val levelsInPack = LevelRepository.getAllLevels().filter { it.id in selectedPack.levelRange }
-        val totalLevels = levelsInPack.size
-        val highestUnlocked = progressManager.getHighestUnlockedLevel()
+        val requestId = ++packLoadRequest
+        renderLoadingState()
 
-        val starsInPack = levelsInPack.sumOf { progressManager.getLevelStars(it.id) }
-        val completedCount = levelsInPack.count { progressManager.isLevelCompleted(it.id) }
-        val unlockedInPack = levelsInPack.count { it.id <= highestUnlocked }
+        Thread {
+            val levelsInPack = LevelRepository
+                .getLevelsByDifficulty(selectedPack.key)
+                .filter { it.id in selectedPack.levelRange }
+            val totalLevels = levelsInPack.size
+            val starsInPack = levelsInPack.sumOf { progressManager.getLevelStars(it.id) }
+            val completedCount = levelsInPack.count { progressManager.isLevelCompleted(it.id) }
+            val unlockedInPack = levelsInPack.count { progressManager.isLevelUnlocked(it.id) }
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed || requestId != packLoadRequest) {
+                    return@runOnUiThread
+                }
+                renderLoadedPackDetails(
+                    levelsInPack = levelsInPack,
+                    totalLevels = totalLevels,
+                    starsInPack = starsInPack,
+                    completedCount = completedCount,
+                    unlockedInPack = unlockedInPack
+                )
+            }
+        }.start()
+    }
+
+    private fun renderLoadingState() {
+        val levelCount = selectedPack.levelRange.count()
 
         difficultyTitleTextView.text = selectedPack.title
         difficultySubtitleTextView.text = getString(
@@ -130,22 +153,36 @@ class DifficultyLevelsActivity : AppCompatActivity() {
             selectedPack.levelRange.first,
             selectedPack.levelRange.last
         )
+        starsTextView.text = getString(R.string.difficulty_detail_stars_format, 0)
+        progressTextView.text = getString(R.string.difficulty_detail_progress_format, 0, levelCount)
+        unlockedTextView.text = getString(R.string.difficulty_detail_unlock_format, 0, levelCount)
+        levelMapContainer.removeAllViews()
 
+        quickPlayButton.text = "Loading..."
+        quickPlayButton.isEnabled = false
+        quickPlayButton.alpha = 0.65f
+        quickPlayButton.setOnClickListener(null)
+    }
+
+    private fun renderLoadedPackDetails(
+        levelsInPack: List<Level>,
+        totalLevels: Int,
+        starsInPack: Int,
+        completedCount: Int,
+        unlockedInPack: Int
+    ) {
         starsTextView.text = getString(R.string.difficulty_detail_stars_format, starsInPack)
         progressTextView.text = getString(R.string.difficulty_detail_progress_format, completedCount, totalLevels)
         unlockedTextView.text = getString(R.string.difficulty_detail_unlock_format, unlockedInPack, totalLevels)
 
-        setupQuickPlay(levelsInPack, highestUnlocked)
-        populateLevels(levelsInPack, highestUnlocked)
+        setupQuickPlay(levelsInPack)
+        populateLevels(levelsInPack)
     }
 
-    private fun setupQuickPlay(levelsInPack: List<Level>, highestUnlocked: Int) {
-        val playable = levelsInPack.filter { it.id <= highestUnlocked }
+    private fun setupQuickPlay(levelsInPack: List<Level>) {
+        val playable = levelsInPack.filter { progressManager.isLevelUnlocked(it.id) }
         if (playable.isEmpty()) {
-            quickPlayButton.text = getString(
-                R.string.quick_play_locked,
-                selectedPack.levelRange.first
-            )
+            quickPlayButton.text = buildQuickPlayLockedLabel()
             quickPlayButton.isEnabled = false
             quickPlayButton.alpha = 0.65f
             quickPlayButton.setOnClickListener(null)
@@ -162,7 +199,21 @@ class DifficultyLevelsActivity : AppCompatActivity() {
         }
     }
 
-    private fun populateLevels(levelsInPack: List<Level>, highestUnlocked: Int) {
+    private fun buildQuickPlayLockedLabel(): String {
+        val firstLevelInPack = selectedPack.levelRange.first
+        val previousLevel = (firstLevelInPack - 1).coerceAtLeast(1)
+        val requiredStars = progressManager.getStarsRequiredForLevel(firstLevelInPack)
+        val currentStars = progressManager.getTotalStars()
+        val shortfall = progressManager.getStarsShortfallForLevel(firstLevelInPack)
+
+        if (requiredStars > 0 && shortfall > 0 && progressManager.isLevelCompleted(previousLevel)) {
+            return getString(R.string.quick_play_locked_stars, requiredStars, currentStars)
+        }
+
+        return getString(R.string.quick_play_locked, firstLevelInPack)
+    }
+
+    private fun populateLevels(levelsInPack: List<Level>) {
         levelMapContainer.removeAllViews()
 
         if (levelsInPack.isEmpty()) {
@@ -204,7 +255,6 @@ class DifficultyLevelsActivity : AppCompatActivity() {
                     createLevelNode(
                         level = level,
                         completedLevels = completedLevels,
-                        highestUnlocked = highestUnlocked,
                         visualIndex = visualIndex
                     )
                 )
@@ -246,10 +296,9 @@ class DifficultyLevelsActivity : AppCompatActivity() {
     private fun createLevelNode(
         level: Level,
         completedLevels: Set<String>,
-        highestUnlocked: Int,
         visualIndex: Int
     ): AppCompatButton {
-        val isUnlocked = level.id <= highestUnlocked
+        val isUnlocked = progressManager.isLevelUnlocked(level.id)
         val isCompleted = completedLevels.contains(level.id.toString())
         val stars = progressManager.getLevelStars(level.id)
 
@@ -295,7 +344,7 @@ class DifficultyLevelsActivity : AppCompatActivity() {
                 launchLevelWithFeedback(level.id, nodeButton)
             } else {
                 nodeButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                showToast(getString(R.string.level_locked_toast_detail, highestUnlocked))
+                showToast(buildLockedLevelMessage(level.id))
             }
         }
 
@@ -310,6 +359,25 @@ class DifficultyLevelsActivity : AppCompatActivity() {
             .start()
 
         return nodeButton
+    }
+
+    private fun buildLockedLevelMessage(levelId: Int): String {
+        if (levelId <= 1) {
+            return getString(R.string.level_locked_toast)
+        }
+
+        val previousLevel = levelId - 1
+        if (!progressManager.isLevelCompleted(previousLevel)) {
+            return getString(R.string.level_locked_previous_toast, previousLevel)
+        }
+
+        val requiredStars = progressManager.getStarsRequiredForLevel(levelId)
+        val currentStars = progressManager.getTotalStars()
+        return if (requiredStars > 0 && currentStars < requiredStars) {
+            getString(R.string.level_locked_stars_toast, requiredStars, currentStars)
+        } else {
+            getString(R.string.level_locked_toast)
+        }
     }
 
     private fun buildCompletedLevelLabel(levelId: Int, earnedStars: Int): CharSequence {

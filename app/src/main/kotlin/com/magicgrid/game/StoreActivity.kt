@@ -60,7 +60,7 @@ class StoreActivity : AppCompatActivity() {
     }
 
     private fun watchAdForCoins() {
-        val rewardCoins = 30
+        val rewardCoins = 10
         val shown = AdController.showRewardedVideo(
             activity = this,
             onReward = {

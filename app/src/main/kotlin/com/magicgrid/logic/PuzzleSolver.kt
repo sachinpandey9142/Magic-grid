@@ -21,23 +21,19 @@ class PuzzleSolver {
     }
 
     /**
+     * Returns true only when the puzzle has exactly one valid full-board solution.
+     */
+    fun hasUniqueSolution(board: GameBoard, endpoints: List<Endpoint>): Boolean {
+        if (!hasValidEndpointLayout(board, endpoints)) return false
+        return countSolutions(board, endpoints, maxSolutions = 2) == 1
+    }
+
+    /**
      * Solve puzzle and return full path map per color when successful.
      * Returns null when no full-board valid solution is found.
      */
     fun solve(board: GameBoard, endpoints: List<Endpoint>): Map<Int, List<Pair<Int, Int>>>? {
-        if (endpoints.isEmpty()) return null
-
-        val endpointCells = endpoints.flatMap {
-            listOf(Pair(it.startRow, it.startCol), Pair(it.endRow, it.endCol))
-        }
-
-        if (endpointCells.any { (r, c) -> r !in 0 until board.rows || c !in 0 until board.cols }) {
-            return null
-        }
-
-        if (endpointCells.toSet().size != endpointCells.size) {
-            return null
-        }
+        if (!hasValidEndpointLayout(board, endpoints)) return null
 
         val solvedPaths = trySolve(board, endpoints) ?: return null
         val valid = arePathsValid(solvedPaths, endpoints) &&
@@ -64,19 +60,7 @@ class PuzzleSolver {
             val start = Pair(endpoint.startRow, endpoint.startCol)
             val end = Pair(endpoint.endRow, endpoint.endCol)
 
-            val blocked = mutableSetOf<Pair<Int, Int>>()
-
-            // Other-color endpoints stay blocked for this color route.
-            for (other in endpoints) {
-                if (other.color == endpoint.color) continue
-                blocked.add(Pair(other.startRow, other.startCol))
-                blocked.add(Pair(other.endRow, other.endCol))
-            }
-
-            // Already assigned routes are blocked to prevent overlap.
-            for ((_, path) in solvedPaths) {
-                blocked.addAll(path)
-            }
+            val blocked = buildBlockedCells(endpoint, endpoints, solvedPaths)
 
             val candidates = findCandidatePaths(
                 start = start,
@@ -98,6 +82,89 @@ class PuzzleSolver {
         }
 
         return if (search(0)) solvedPaths.toMap() else null
+    }
+
+    private fun countSolutions(board: GameBoard, endpoints: List<Endpoint>, maxSolutions: Int): Int {
+        if (maxSolutions <= 0) return 0
+
+        val solvedPaths = mutableMapOf<Int, List<Pair<Int, Int>>>()
+        val ordered = endpoints.sortedByDescending {
+            abs(it.startRow - it.endRow) + abs(it.startCol - it.endCol)
+        }
+        var solutionCount = 0
+
+        fun search(colorIndex: Int) {
+            if (solutionCount >= maxSolutions) return
+
+            if (colorIndex >= ordered.size) {
+                if (isGridComplete(board.rows, board.cols, solvedPaths)) {
+                    solutionCount++
+                }
+                return
+            }
+
+            val endpoint = ordered[colorIndex]
+            val start = Pair(endpoint.startRow, endpoint.startCol)
+            val end = Pair(endpoint.endRow, endpoint.endCol)
+            val blocked = buildBlockedCells(endpoint, endpoints, solvedPaths)
+
+            val candidates = findCandidatePaths(
+                start = start,
+                end = end,
+                rows = board.rows,
+                cols = board.cols,
+                blockedCells = blocked
+            )
+
+            for (candidate in candidates) {
+                solvedPaths[endpoint.color] = candidate
+                search(colorIndex + 1)
+                if (solutionCount >= maxSolutions) {
+                    break
+                }
+            }
+
+            solvedPaths.remove(endpoint.color)
+        }
+
+        search(0)
+        return solutionCount
+    }
+
+    private fun hasValidEndpointLayout(board: GameBoard, endpoints: List<Endpoint>): Boolean {
+        if (endpoints.isEmpty()) return false
+
+        val endpointCells = endpoints.flatMap {
+            listOf(Pair(it.startRow, it.startCol), Pair(it.endRow, it.endCol))
+        }
+
+        if (endpointCells.any { (r, c) -> r !in 0 until board.rows || c !in 0 until board.cols }) {
+            return false
+        }
+
+        return endpointCells.toSet().size == endpointCells.size
+    }
+
+    private fun buildBlockedCells(
+        current: Endpoint,
+        endpoints: List<Endpoint>,
+        solvedPaths: Map<Int, List<Pair<Int, Int>>>
+    ): MutableSet<Pair<Int, Int>> {
+        val blocked = mutableSetOf<Pair<Int, Int>>()
+
+        // Other-color endpoints stay blocked for this color route.
+        for (other in endpoints) {
+            if (other.color == current.color) continue
+            blocked.add(Pair(other.startRow, other.startCol))
+            blocked.add(Pair(other.endRow, other.endCol))
+        }
+
+        // Already assigned routes are blocked to prevent overlap.
+        for ((_, path) in solvedPaths) {
+            blocked.addAll(path)
+        }
+
+        return blocked
     }
 
     private fun findCandidatePaths(
