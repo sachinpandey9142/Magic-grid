@@ -23,13 +23,25 @@ class ProgressManager(context: Context) {
         private const val LEVEL_TIMES_KEY = "level_times"
         private const val LEVEL_STARS_KEY = "level_stars"
         private const val LEVEL_HINTS_KEY = "level_hints"
+        private const val LEVEL_FAIL_STREAK_KEY = "level_fail_streak"
+        private const val LEVEL_FAIL_TOTAL_KEY = "level_fail_total"
+        private const val LEVEL_FAIL_REWARD_CHECKPOINT_KEY = "level_fail_reward_checkpoint"
         private const val COINS_BALANCE_KEY = "coins_balance"
+        private const val SHOW_BOXES_LEFT_KEY = "show_boxes_left"
         private const val LEVEL_COIN_REWARD_KEY = "level_coin_reward"
         private const val FIRST_LEVEL_INTERSTITIAL_SHOWN_KEY = "first_level_interstitial_shown"
         private const val LAST_VIDEO_AD_MILESTONE_KEY = "last_video_ad_milestone"
         private const val DEFAULT_STARTING_COINS = 100
         private const val COINS_PER_STAR = 15
+        private const val FAIL_STREAK_REWARD_STEP = 3
+        private const val FAIL_STREAK_REWARD_COINS = 20
     }
+
+    data class FailureProgress(
+        val streak: Int,
+        val totalFailures: Int,
+        val pityCoinsAwarded: Int
+    )
 
     /**
      * Mark a level as completed
@@ -39,6 +51,7 @@ class ProgressManager(context: Context) {
         completedLevels.add(levelId.toString())
         sharedPreferences.edit().putStringSet(COMPLETED_LEVELS_KEY, completedLevels).apply()
 
+        clearLevelFailureStreak(levelId)
         unlockNextLevel(levelId)
 
         // Save best score (least moves)
@@ -224,6 +237,17 @@ class ProgressManager(context: Context) {
     }
 
     /**
+     * User option for in-game "boxes left" helper visibility.
+     */
+    fun isBoxesLeftEnabled(): Boolean {
+        return sharedPreferences.getBoolean(SHOW_BOXES_LEFT_KEY, false)
+    }
+
+    fun setBoxesLeftEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean(SHOW_BOXES_LEFT_KEY, enabled).apply()
+    }
+
+    /**
      * Add coins to player balance and return the updated balance
      */
     fun addCoins(amount: Int): Int {
@@ -295,6 +319,65 @@ class ProgressManager(context: Context) {
 
         sharedPreferences.edit().putInt(LAST_VIDEO_AD_MILESTONE_KEY, milestone).apply()
         return true
+    }
+
+    /**
+     * Tracks failed attempts and grants a small pity reward every few consecutive failures.
+     */
+    fun recordLevelFailure(levelId: Int): FailureProgress {
+        val levelKey = levelId.toString()
+
+        val streakMap = getLevelFailStreakMap().toMutableMap()
+        val totalMap = getLevelFailTotalMap().toMutableMap()
+        val checkpointMap = getLevelFailRewardCheckpointMap().toMutableMap()
+
+        val newStreak = (streakMap[levelKey]?.toIntOrNull() ?: 0) + 1
+        val newTotal = (totalMap[levelKey]?.toIntOrNull() ?: 0) + 1
+
+        streakMap[levelKey] = newStreak.toString()
+        totalMap[levelKey] = newTotal.toString()
+
+        val checkpointReached = newStreak / FAIL_STREAK_REWARD_STEP
+        val previousCheckpoint = checkpointMap[levelKey]?.toIntOrNull() ?: 0
+
+        var pityCoinsAwarded = 0
+        if (checkpointReached > previousCheckpoint) {
+            pityCoinsAwarded = FAIL_STREAK_REWARD_COINS
+            addCoins(pityCoinsAwarded)
+            checkpointMap[levelKey] = checkpointReached.toString()
+        }
+
+        saveMap(LEVEL_FAIL_STREAK_KEY, streakMap)
+        saveMap(LEVEL_FAIL_TOTAL_KEY, totalMap)
+        saveMap(LEVEL_FAIL_REWARD_CHECKPOINT_KEY, checkpointMap)
+
+        return FailureProgress(
+            streak = newStreak,
+            totalFailures = newTotal,
+            pityCoinsAwarded = pityCoinsAwarded
+        )
+    }
+
+    fun clearLevelFailureStreak(levelId: Int) {
+        val levelKey = levelId.toString()
+
+        val streakMap = getLevelFailStreakMap().toMutableMap()
+        if (streakMap.remove(levelKey) != null) {
+            saveMap(LEVEL_FAIL_STREAK_KEY, streakMap)
+        }
+
+        val checkpointMap = getLevelFailRewardCheckpointMap().toMutableMap()
+        if (checkpointMap.remove(levelKey) != null) {
+            saveMap(LEVEL_FAIL_REWARD_CHECKPOINT_KEY, checkpointMap)
+        }
+    }
+
+    fun getLevelFailureStreak(levelId: Int): Int {
+        return getLevelFailStreakMap()[levelId.toString()]?.toIntOrNull() ?: 0
+    }
+
+    fun getLevelFailureTotal(levelId: Int): Int {
+        return getLevelFailTotalMap()[levelId.toString()]?.toIntOrNull() ?: 0
     }
 
     /**
@@ -391,6 +474,18 @@ class ProgressManager(context: Context) {
 
     private fun getLevelHintsMap(): Map<String, String> {
         return parseMap(LEVEL_HINTS_KEY)
+    }
+
+    private fun getLevelFailStreakMap(): Map<String, String> {
+        return parseMap(LEVEL_FAIL_STREAK_KEY)
+    }
+
+    private fun getLevelFailTotalMap(): Map<String, String> {
+        return parseMap(LEVEL_FAIL_TOTAL_KEY)
+    }
+
+    private fun getLevelFailRewardCheckpointMap(): Map<String, String> {
+        return parseMap(LEVEL_FAIL_REWARD_CHECKPOINT_KEY)
     }
 
     private fun getLevelCoinRewardMap(): Map<String, String> {

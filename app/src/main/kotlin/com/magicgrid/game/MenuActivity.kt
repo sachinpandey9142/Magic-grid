@@ -53,7 +53,9 @@ class MenuActivity : AppCompatActivity() {
 
         AdController.initialize(this)
         AdController.preloadInterstitial(applicationContext)
-        AdController.preloadRewarded(applicationContext)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.COINS)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.HINT)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.MILESTONE)
         menuBannerAd?.let { AdController.loadBanner(it) }
 
         window.decorView.post {

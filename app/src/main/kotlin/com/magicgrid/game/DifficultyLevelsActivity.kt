@@ -2,6 +2,8 @@ package com.magicgrid.game
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ImageSpan
@@ -22,6 +24,8 @@ import com.magicgrid.R
 import com.magicgrid.data.Level
 import com.magicgrid.data.LevelRepository
 import com.magicgrid.data.ProgressManager
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import kotlin.math.roundToInt
 
 /**
@@ -55,6 +59,9 @@ class DifficultyLevelsActivity : AppCompatActivity() {
 
     private lateinit var selectedPack: DifficultyPack
     private var packLoadRequest = 0
+    private val packLoaderExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var packLoaderFuture: Future<*>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,6 +87,12 @@ class DifficultyLevelsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         renderPackDetails()
+    }
+
+    override fun onDestroy() {
+        packLoaderFuture?.cancel(true)
+        packLoaderExecutor.shutdownNow()
+        super.onDestroy()
     }
 
     private fun resolvePack(key: String?): DifficultyPack {
@@ -118,28 +131,33 @@ class DifficultyLevelsActivity : AppCompatActivity() {
         val requestId = ++packLoadRequest
         renderLoadingState()
 
-        Thread {
+        packLoaderFuture?.cancel(true)
+        packLoaderFuture = packLoaderExecutor.submit {
             val levelsInPack = LevelRepository
                 .getLevelsByDifficulty(selectedPack.key)
                 .filter { it.id in selectedPack.levelRange }
-            val totalLevels = levelsInPack.size
-            val starsInPack = levelsInPack.sumOf { progressManager.getLevelStars(it.id) }
-            val completedCount = levelsInPack.count { progressManager.isLevelCompleted(it.id) }
-            val unlockedInPack = levelsInPack.count { progressManager.isLevelUnlocked(it.id) }
 
-            runOnUiThread {
+            val packSummary = PackSummary(
+                totalLevels = levelsInPack.size,
+                starsInPack = levelsInPack.sumOf { progressManager.getLevelStars(it.id) },
+                completedCount = levelsInPack.count { progressManager.isLevelCompleted(it.id) },
+                unlockedInPack = levelsInPack.count { progressManager.isLevelUnlocked(it.id) }
+            )
+
+            mainHandler.post {
                 if (isFinishing || isDestroyed || requestId != packLoadRequest) {
-                    return@runOnUiThread
+                    return@post
                 }
+
                 renderLoadedPackDetails(
                     levelsInPack = levelsInPack,
-                    totalLevels = totalLevels,
-                    starsInPack = starsInPack,
-                    completedCount = completedCount,
-                    unlockedInPack = unlockedInPack
+                    totalLevels = packSummary.totalLevels,
+                    starsInPack = packSummary.starsInPack,
+                    completedCount = packSummary.completedCount,
+                    unlockedInPack = packSummary.unlockedInPack
                 )
             }
-        }.start()
+        }
     }
 
     private fun renderLoadingState() {
@@ -158,7 +176,7 @@ class DifficultyLevelsActivity : AppCompatActivity() {
         unlockedTextView.text = getString(R.string.difficulty_detail_unlock_format, 0, levelCount)
         levelMapContainer.removeAllViews()
 
-        quickPlayButton.text = "Loading..."
+        quickPlayButton.text = getString(R.string.quick_play_loading)
         quickPlayButton.isEnabled = false
         quickPlayButton.alpha = 0.65f
         quickPlayButton.setOnClickListener(null)
@@ -312,8 +330,10 @@ class DifficultyLevelsActivity : AppCompatActivity() {
 
         nodeButton.text = if (isCompleted) {
             buildCompletedLevelLabel(level.id, stars)
-        } else {
+        } else if (isUnlocked) {
             getString(R.string.level_node_number_format, level.id)
+        } else {
+            buildLockedLevelLabel(level.id)
         }
 
         nodeButton.isAllCaps = false
@@ -377,6 +397,25 @@ class DifficultyLevelsActivity : AppCompatActivity() {
             getString(R.string.level_locked_stars_toast, requiredStars, currentStars)
         } else {
             getString(R.string.level_locked_toast)
+        }
+    }
+
+    private fun buildLockedLevelLabel(levelId: Int): String {
+        if (levelId <= 1) {
+            return getString(R.string.level_locked_badge_generic_format, levelId)
+        }
+
+        val previousLevel = levelId - 1
+        if (!progressManager.isLevelCompleted(previousLevel)) {
+            return getString(R.string.level_locked_badge_previous_format, levelId, previousLevel)
+        }
+
+        val requiredStars = progressManager.getStarsRequiredForLevel(levelId)
+        val shortfall = progressManager.getStarsShortfallForLevel(levelId)
+        return if (requiredStars > 0 && shortfall > 0) {
+            getString(R.string.level_locked_badge_stars_format, levelId, shortfall)
+        } else {
+            getString(R.string.level_locked_badge_generic_format, levelId)
         }
     }
 
@@ -463,4 +502,11 @@ class DifficultyLevelsActivity : AppCompatActivity() {
     private fun showToast(message: String) {
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
     }
+
+    private data class PackSummary(
+        val totalLevels: Int,
+        val starsInPack: Int,
+        val completedCount: Int,
+        val unlockedInPack: Int
+    )
 }

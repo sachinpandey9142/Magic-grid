@@ -369,6 +369,25 @@
 
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/boxes_left_chip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/difficulty_stat_chip"
+                android:paddingStart="8dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="4dp"
+                android:text="@string/game_boxes_chip_placeholder"
+                android:textColor="@color/text_primary"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:ignore="HardcodedText" />
+
         </FrameLayout>
 
         <!-- GAME VIEW (Main Play Area) -->
@@ -516,6 +535,24 @@
             app:adUnitId="@string/admob_banner_unit_id" />
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/resume_countdown_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/background_glass"
+        android:elevation="16dp"
+        android:paddingStart="22dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="22dp"
+        android:paddingBottom="10dp"
+        android:text="3"
+        android:textColor="@color/accent_gold"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:ignore="HardcodedText" />
 
 </FrameLayout>
 

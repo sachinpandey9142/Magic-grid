@@ -8,6 +8,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.magicgrid.R
 import com.magicgrid.ads.AdController
+import com.magicgrid.data.GameTelemetry
 import com.magicgrid.data.ProgressManager
 
 /**
@@ -30,7 +31,7 @@ class StoreActivity : AppCompatActivity() {
         coinBalanceText = findViewById(R.id.store_coin_text)
 
         AdController.initialize(this)
-        AdController.preloadRewarded(applicationContext)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.COINS)
 
         backButton.setOnClickListener {
             it.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -63,13 +64,15 @@ class StoreActivity : AppCompatActivity() {
         val rewardCoins = 10
         val shown = AdController.showRewardedVideo(
             activity = this,
+            placement = AdController.RewardPlacement.COINS,
             onReward = {
                 progressManager.addCoins(rewardCoins)
+                GameTelemetry.track(this, event = "store_rewarded_coins", detail = "coins=$rewardCoins")
                 refreshCoinBalance()
                 showToast(getString(R.string.store_watch_ad_reward_format, rewardCoins))
             },
             onFinished = {
-                AdController.preloadRewarded(applicationContext)
+                AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.COINS)
             }
         )
 
@@ -85,6 +88,7 @@ class StoreActivity : AppCompatActivity() {
             .setNegativeButton(R.string.dialog_cancel, null)
             .setPositiveButton(R.string.store_buy_now) { _, _ ->
                 progressManager.addCoins(coins)
+                GameTelemetry.track(this, event = "store_coin_pack_purchase", detail = "coins=$coins,price=$priceLabel")
                 refreshCoinBalance()
                 showToast(getString(R.string.store_purchase_success_format, coins))
             }

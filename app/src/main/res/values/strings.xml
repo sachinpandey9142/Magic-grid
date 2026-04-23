@@ -7,6 +7,7 @@
     <string name="symbol_timer">⏱</string>
     <string name="symbol_moves">◆</string>
     <string name="symbol_coin">🪙</string>
+    <string name="symbol_boxes">□</string>
     <string name="value_zero">0</string>
     <string name="timer_default">00:00</string>
     <string name="menu_subtitle">Connect every color, fill every cell</string>
@@ -54,6 +55,7 @@
     <string name="progress_label">Progress</string>
     <string name="unlocked_label">Unlocked</string>
     <string name="quick_play_label">Quick Play</string>
+    <string name="quick_play_loading">Loading...</string>
     <string name="quick_play_level_format">Quick Play: Level %1$d</string>
     <string name="quick_play_locked">Quick Play Locked (Unlock at Level %1$d)</string>
     <string name="quick_play_locked_stars">Quick Play Locked (Need %1$d stars, you have %2$d)</string>
@@ -65,6 +67,9 @@
     <string name="level_card_title_format">Level %1$d</string>
     <string name="level_locked_label">Locked</string>
     <string name="level_locked_toast">Finish previous levels to unlock this one.</string>
+    <string name="level_locked_badge_previous_format">L%1$d\nBeat L%2$d</string>
+    <string name="level_locked_badge_stars_format">L%1$d\nNeed %2$d★</string>
+    <string name="level_locked_badge_generic_format">L%1$d\nLocked</string>
     <string name="level_completed_info_format" tools:ignore="PluralsCandidate">Completed | %1$d stars | %2$dx%3$d</string>
     <string name="level_available_info_format">%1$s | %2$dx%3$d</string>
     <string name="settings">Settings</string>
@@ -91,12 +96,22 @@
     <string name="game_level_title_placeholder">Level 1: Challenge</string>
     <string name="game_level_title_format">Level %1$d: %2$s</string>
     <string name="game_move_count_format">%1$d moves</string>
+    <string name="game_move_count_with_boxes_format">%1$d moves • %2$d left</string>
+    <string name="game_boxes_left_format">%1$d left</string>
+    <string name="game_boxes_chip_format">□ %1$d left</string>
+    <string name="game_boxes_chip_placeholder">□ 0 left</string>
+    <string name="game_boxes_left_placeholder">0 left</string>
+    <string name="boxes_toggle_show">SHOW</string>
+    <string name="boxes_toggle_hide">HIDE</string>
     <string name="game_all_paths_complete">All paths complete!</string>
     <string name="game_all_levels_complete_toast">Congratulations! You completed all levels!</string>
     <string name="game_paused">Paused</string>
     <string name="game_resumed">Resumed</string>
+    <string name="resume_countdown_go">Go</string>
     <string name="pause_dialog_title">Game Paused</string>
     <string name="pause_dialog_message">Take a break. Continue this level or restart from the beginning.</string>
+    <string name="pause_dialog_boxes_option">Show boxes remaining</string>
+    <string name="pause_dialog_boxes_switch">Boxes left</string>
     <string name="pause_dialog_continue">Continue</string>
     <string name="pause_dialog_restart">Restart</string>
     <string name="star_target_three_format">No hint + finish in %1$s</string>
@@ -167,6 +182,9 @@ Current coins: %2$d</string>
     <string name="lose_dialog_subtitle">The timer reached zero before all paths were connected.</string>
     <string name="lose_time_limit_label">Time limit</string>
     <string name="lose_time_used_label">Time used</string>
+    <string name="lose_retry_tip_format">Attempt streak on this level: %1$d. Keep going, you are close.</string>
+    <string name="lose_retry_tip_pity_format">Attempt streak: %1$d. Support bonus unlocked: +%2$d coins.</string>
+    <string name="pity_reward_toast_format">Persistence bonus: +%1$d coins.</string>
     <string name="game_complete_title">You Completed The Game!</string>
     <string name="game_complete_subtitle">Congratulations! Every challenge from Level 1 to Level 100 is complete.</string>
     <string name="game_complete_stars_earned">Stars earned</string>
@@ -178,4 +196,7 @@ Current coins: %2$d</string>
     <string name="admob_banner_unit_id">ca-app-pub-8048301971162422/8128537532</string>
     <string name="admob_interstitial_unit_id">ca-app-pub-8048301971162422/7043732754</string>
     <string name="admob_rewarded_unit_id">ca-app-pub-8048301971162422/8998766078</string>
+    <string name="admob_rewarded_coins_unit_id">ca-app-pub-8048301971162422/8998766078</string>
+    <string name="admob_rewarded_hint_unit_id">ca-app-pub-8048301971162422/8998766078</string>
+    <string name="admob_rewarded_milestone_unit_id">ca-app-pub-8048301971162422/8998766078</string>
 </resources>

@@ -11,10 +11,12 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import com.google.android.gms.ads.AdView
 import com.magicgrid.R
 import com.magicgrid.ads.AdController
 import com.magicgrid.controller.GameManager
+import com.magicgrid.data.GameTelemetry
 import com.magicgrid.data.LevelRepository
 import com.magicgrid.data.ProgressManager
 import com.magicgrid.data.StarManager
@@ -50,6 +52,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private lateinit var moveCounter: TextView
     private lateinit var timerText: TextView
     private lateinit var coinText: TextView
+    private lateinit var boxesLeftChip: TextView
     private lateinit var starTargetOne: TextView
     private lateinit var starTargetTwo: TextView
     private lateinit var starTargetThree: TextView
@@ -64,6 +67,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private lateinit var backButton: Button
     private lateinit var topBackButton: Button
     private lateinit var pauseButton: Button
+    private lateinit var resumeCountdownText: TextView
     private var gameBannerAd: AdView? = null
     
     // Game state
@@ -74,6 +78,9 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private var levelTimeLimitSeconds = 0
     private var timeoutHandled = false
     private var resultDialogShowing = false
+    private var showBoxesLeft = true
+    private var resumeCountdownRunning = false
+    private var resumeCountdownRunnable: Runnable? = null
     private var liveStarTier = 3
     private var starHudInitialized = false
     private val puzzleSolver = PuzzleSolver()
@@ -154,6 +161,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         moveCounter = findViewById(R.id.move_counter)
         timerText = findViewById(R.id.timer_text)
         coinText = findViewById(R.id.coin_text)
+        boxesLeftChip = findViewById(R.id.boxes_left_chip)
         starTargetOne = findViewById(R.id.target_text_1)
         starTargetTwo = findViewById(R.id.target_text_2)
         starTargetThree = findViewById(R.id.target_text_3)
@@ -168,17 +176,20 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         backButton = findViewById(R.id.btn_menu)
         topBackButton = findViewById(R.id.btn_back_top)
         pauseButton = findViewById(R.id.btn_pause)
+        resumeCountdownText = findViewById(R.id.resume_countdown_text)
         gameBannerAd = findViewById(R.id.game_banner_ad)
 
         AdController.initialize(this)
         AdController.preloadInterstitial(applicationContext)
-        AdController.preloadRewarded(applicationContext)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.HINT)
+        AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.MILESTONE)
         gameBannerAd?.let { AdController.loadBanner(it) }
 
         // Restore state after process death / configuration change.
         hintsUsed = savedInstanceState?.getInt(KEY_HINTS_USED, 0) ?: 0
         restoreManagerState(savedInstanceState)
         isPaused = gameManager.isPaused()
+        showBoxesLeft = progressManager.isBoxesLeftEnabled()
 
         // Set up title
         levelTitle.text = getString(R.string.game_level_title_format, level.id, level.name)
@@ -247,6 +258,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         }
 
         progressManager.setCurrentLevel(levelId)
+        GameTelemetry.track(this, event = "level_start", levelId = levelId)
         applyPauseUiState()
 
         if (!isPaused && !gameManager.isGameWon()) {
@@ -264,11 +276,59 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         val level = gameManager.level
         
         levelTitle.text = getString(R.string.game_level_title_format, level.id, level.name)
-        moveCounter.text = getString(R.string.game_move_count_format, state.moveCount)
+        updateMoveCounter(state.moveCount)
+        updateBoxesLeftChip()
         updateTimer()
         updateCoinDisplay()
         updateLiveStarHud(animated = false)
         applyPauseUiState()
+    }
+
+    private fun setBoxesLeftVisibility(enabled: Boolean) {
+        if (showBoxesLeft == enabled) {
+            return
+        }
+
+        showBoxesLeft = enabled
+        progressManager.setBoxesLeftEnabled(showBoxesLeft)
+        updateBoxesLeftChip()
+
+        GameTelemetry.track(
+            context = this,
+            event = "boxes_left_toggle",
+            levelId = levelId,
+            detail = if (showBoxesLeft) "show" else "hide"
+        )
+    }
+
+    private fun updateMoveCounter(moveCount: Int) {
+        moveCounter.text = getString(R.string.game_move_count_format, moveCount)
+    }
+
+    private fun updateBoxesLeftChip() {
+        if (!showBoxesLeft) {
+            boxesLeftChip.visibility = View.GONE
+            return
+        }
+
+        boxesLeftChip.text = getString(R.string.game_boxes_chip_format, countBoxesLeft())
+        boxesLeftChip.visibility = View.VISIBLE
+    }
+
+    private fun countBoxesLeft(): Int {
+        val board = gameManager.board
+        val grid = board.getGrid()
+        var left = 0
+
+        for (row in 0 until board.rows) {
+            for (col in 0 until board.cols) {
+                if (!grid[row][col].isFilled()) {
+                    left++
+                }
+            }
+        }
+
+        return left
     }
 
     private fun updateCoinDisplay() {
@@ -407,6 +467,14 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
             return
         }
 
+        val failureProgress = progressManager.recordLevelFailure(levelId)
+        GameTelemetry.track(
+            context = this,
+            event = "level_timeout",
+            levelId = levelId,
+            detail = "streak=${failureProgress.streak}"
+        )
+
         timeoutHandled = true
         resultDialogShowing = true
         gameManager.pauseGame()
@@ -414,19 +482,42 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         stopTimerLoop()
         applyPauseUiState()
 
-        showTimeoutDialog(gameManager.getElapsedTimeSeconds())
+        if (failureProgress.pityCoinsAwarded > 0) {
+            updateCoinDisplay()
+            showToast(
+                getString(
+                    R.string.pity_reward_toast_format,
+                    failureProgress.pityCoinsAwarded
+                )
+            )
+        }
+
+        showTimeoutDialog(gameManager.getElapsedTimeSeconds(), failureProgress)
     }
 
-    private fun showTimeoutDialog(elapsedSeconds: Int) {
+    private fun showTimeoutDialog(
+        elapsedSeconds: Int,
+        failureProgress: ProgressManager.FailureProgress
+    ) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_lose, null)
         val limitValue = dialogView.findViewById<TextView>(R.id.lose_time_limit_value)
         val elapsedValue = dialogView.findViewById<TextView>(R.id.lose_time_used_value)
+        val retryTip = dialogView.findViewById<TextView>(R.id.lose_retry_tip)
         val homeButton = dialogView.findViewById<Button>(R.id.btn_lose_home)
         val replayButton = dialogView.findViewById<Button>(R.id.btn_lose_replay)
         val dialogCard = dialogView.findViewById<View>(R.id.lose_card)
 
         limitValue.text = starManager.formatTime(levelTimeLimitSeconds)
         elapsedValue.text = starManager.formatTime(elapsedSeconds)
+        retryTip.text = if (failureProgress.pityCoinsAwarded > 0) {
+            getString(
+                R.string.lose_retry_tip_pity_format,
+                failureProgress.streak,
+                failureProgress.pityCoinsAwarded
+            )
+        } else {
+            getString(R.string.lose_retry_tip_format, failureProgress.streak)
+        }
 
         val dialog = AlertDialog.Builder(this, R.style.DialogAnimation)
             .setView(dialogView)
@@ -864,6 +955,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         provideControlFeedback(hintButton)
         hintsUsed++
         progressManager.incrementHintsUsed(levelId)
+        GameTelemetry.track(this, event = "hint_coin_purchase", levelId = levelId)
         updateCoinDisplay()
         updateLiveStarHud(animated = true)
         showHint(hintSuggestion)
@@ -872,6 +964,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     private fun watchAdForHint() {
         val shown = AdController.showRewardedVideo(
             activity = this,
+            placement = AdController.RewardPlacement.HINT,
             onReward = {
                 val hintSuggestion = findHintSuggestion()
                 if (hintSuggestion == null) {
@@ -882,13 +975,14 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
                 provideControlFeedback(hintButton)
                 hintsUsed++
                 progressManager.incrementHintsUsed(levelId)
+                GameTelemetry.track(this, event = "hint_ad_reward", levelId = levelId)
                 updateCoinDisplay()
                 updateLiveStarHud(animated = true)
                 showHint(hintSuggestion)
                 showToast(getString(R.string.hint_rewarded_granted))
             },
             onFinished = {
-                AdController.preloadRewarded(applicationContext)
+                AdController.preloadRewarded(applicationContext, AdController.RewardPlacement.HINT)
             }
         )
 
@@ -930,6 +1024,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         
         // Track completion with ProgressManager
         progressManager.completeLevel(levelId, state.moveCount, state.elapsedTimeSeconds)
+        progressManager.clearLevelFailureStreak(levelId)
         progressManager.saveLevelStars(levelId, starsEarned, hintsUsed)
         val coinsEarned = progressManager.grantCoinsForLevelResult(levelId, starsEarned)
         val nextLevelId = nextLevel?.id ?: levelId
@@ -943,6 +1038,13 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         if (coinsEarned > 0) {
             showToast(getString(R.string.coins_earned_format, coinsEarned))
         }
+
+        GameTelemetry.track(
+            context = this,
+            event = "level_win",
+            levelId = levelId,
+            detail = "stars=$starsEarned,moves=${state.moveCount},time=${state.elapsedTimeSeconds}"
+        )
 
         showWinDialogAfterAds(
             stars = starsEarned,
@@ -973,6 +1075,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         if (showMilestoneVideoAd) {
             AdController.showRewardedVideo(
                 activity = this,
+                placement = AdController.RewardPlacement.MILESTONE,
                 onReward = {},
                 onFinished = {
                     if (showFirstLevelInterstitial) {
@@ -1084,6 +1187,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     private fun restartCurrentLevel() {
+        cancelResumeCountdown(hideOverlay = true)
         gameManager.resetGame()
         hintsUsed = 0
         isPaused = false
@@ -1113,7 +1217,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         if (gameManager.isGameWon() || timeoutHandled || resultDialogShowing) return
 
         if (isPaused) {
-            resumeGame(showMessage = false)
+            startResumeCountdown()
             return
         }
 
@@ -1130,23 +1234,133 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
 
         resultDialogShowing = true
 
+        val dialogView = layoutInflater.inflate(R.layout.dialog_pause, null)
+        val boxesLeftSwitch = dialogView.findViewById<SwitchCompat>(R.id.switch_boxes_left)
+        val continueButton = dialogView.findViewById<Button>(R.id.btn_pause_continue)
+        val restartButton = dialogView.findViewById<Button>(R.id.btn_pause_restart)
+        val dialogCard = dialogView.findViewById<View>(R.id.pause_card)
+
+        boxesLeftSwitch.isChecked = showBoxesLeft
+        boxesLeftSwitch.setOnCheckedChangeListener { _, enabled ->
+            setBoxesLeftVisibility(enabled)
+        }
+
         val dialog = AlertDialog.Builder(this, R.style.DialogAnimation)
-            .setTitle(getString(R.string.pause_dialog_title))
-            .setMessage(getString(R.string.pause_dialog_message))
-            .setCancelable(false)
-            .setNegativeButton(R.string.pause_dialog_restart) { _, _ ->
-                restartCurrentLevel()
-            }
-            .setPositiveButton(R.string.pause_dialog_continue) { _, _ ->
-                resumeGame(showMessage = false)
-            }
+            .setView(dialogView)
             .create()
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setCancelable(false)
+        dialog.setCanceledOnTouchOutside(false)
+
+        continueButton.setOnClickListener {
+            provideControlFeedback(continueButton)
+            dialog.dismiss()
+            startResumeCountdown()
+        }
+
+        restartButton.setOnClickListener {
+            provideControlFeedback(restartButton)
+            dialog.dismiss()
+            restartCurrentLevel()
+        }
+
+        dialog.setOnShowListener {
+            dialogCard.alpha = 0f
+            dialogCard.scaleX = 0.94f
+            dialogCard.scaleY = 0.94f
+            dialogCard.translationY = 24f
+            dialogCard.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(200)
+                .start()
+        }
 
         dialog.setOnDismissListener {
             resultDialogShowing = false
         }
 
         dialog.show()
+    }
+
+    private fun startResumeCountdown() {
+        if (!isPaused || timeoutHandled || gameManager.isGameWon()) {
+            return
+        }
+
+        if (resumeCountdownRunning) {
+            return
+        }
+
+        cancelResumeCountdown(hideOverlay = true)
+        resumeCountdownRunning = true
+        applyPauseUiState()
+
+        var currentValue = 3
+
+        fun stepCountdown() {
+            if (!resumeCountdownRunning || !isPaused) {
+                return
+            }
+
+            if (currentValue > 0) {
+                showResumeCountdownFrame(currentValue.toString())
+                currentValue -= 1
+
+                val nextStep = Runnable { stepCountdown() }
+                resumeCountdownRunnable = nextStep
+                gameView.postDelayed(nextStep, 700)
+                return
+            }
+
+            showResumeCountdownFrame(getString(R.string.resume_countdown_go))
+            val resumeAction = Runnable {
+                resumeCountdownRunning = false
+                resumeCountdownRunnable = null
+                resumeCountdownText.visibility = View.GONE
+                resumeGame(showMessage = false)
+            }
+            resumeCountdownRunnable = resumeAction
+            gameView.postDelayed(resumeAction, 460)
+        }
+
+        stepCountdown()
+    }
+
+    private fun showResumeCountdownFrame(label: String) {
+        resumeCountdownText.animate().cancel()
+        resumeCountdownText.text = label
+        resumeCountdownText.visibility = View.VISIBLE
+        resumeCountdownText.alpha = 0f
+        resumeCountdownText.scaleX = 0.78f
+        resumeCountdownText.scaleY = 0.78f
+        resumeCountdownText.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(220)
+            .start()
+    }
+
+    private fun cancelResumeCountdown(hideOverlay: Boolean) {
+        resumeCountdownRunnable?.let { pending ->
+            if (::gameView.isInitialized) {
+                gameView.removeCallbacks(pending)
+            }
+        }
+        resumeCountdownRunnable = null
+        resumeCountdownRunning = false
+
+        if (hideOverlay && ::resumeCountdownText.isInitialized) {
+            resumeCountdownText.animate().cancel()
+            resumeCountdownText.visibility = View.GONE
+            resumeCountdownText.alpha = 1f
+            resumeCountdownText.scaleX = 1f
+            resumeCountdownText.scaleY = 1f
+        }
     }
 
     private fun pauseGame(showMessage: Boolean) {
@@ -1161,6 +1375,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     private fun resumeGame(showMessage: Boolean) {
+        cancelResumeCountdown(hideOverlay = true)
         if (!gameManager.resumeGame()) return
 
         isPaused = false
@@ -1181,7 +1396,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         undoButton.isEnabled = interactive
         hintButton.isEnabled = interactive
 
-        pauseButton.isEnabled = !gameManager.isGameWon() && !timeoutHandled
+        pauseButton.isEnabled = !gameManager.isGameWon() && !timeoutHandled && !resumeCountdownRunning
         pauseButton.text = if (isPaused) getString(R.string.symbol_play) else getString(R.string.symbol_pause)
     }
 
@@ -1199,6 +1414,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     }
 
     private fun navigateToMenu() {
+        cancelResumeCountdown(hideOverlay = true)
         startActivity(Intent(this, MenuActivity::class.java))
         finish()
     }
@@ -1220,6 +1436,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     override fun onPause() {
         gameBannerAd?.pause()
         super.onPause()
+        cancelResumeCountdown(hideOverlay = true)
         if (!::gameManager.isInitialized) return
         if (!isFinishing && !gameManager.isGameWon() && !isPaused) {
             pauseGame(showMessage = false)
@@ -1229,8 +1446,12 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
     override fun onResume() {
         super.onResume()
         gameBannerAd?.resume()
-        if (::coinText.isInitialized && ::hintButton.isInitialized) {
+        if (::coinText.isInitialized && ::hintButton.isInitialized && ::moveCounter.isInitialized) {
             updateCoinDisplay()
+            updateMoveCounter(gameManager.getGameState().moveCount)
+            if (::boxesLeftChip.isInitialized) {
+                updateBoxesLeftChip()
+            }
         }
     }
 
@@ -1242,6 +1463,7 @@ class GameActivity : AppCompatActivity(), GameManager.GameStateListener {
         gameBannerAd?.destroy()
         gameBannerAd = null
         super.onDestroy()
+        cancelResumeCountdown(hideOverlay = true)
         stopTimerLoop()
     }
 }
